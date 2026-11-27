@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +38,12 @@ class Settings(BaseSettings):
     # random SECRET_KEY in .env anywhere the app is shared.
     secret_key: str = "dev-only-insecure-secret-key-change-me"
     access_token_ttl_seconds: int = 8 * 60 * 60
+
+    # Receipt files. A relative path resolves against the working directory
+    # (backend/ locally, /app in the container, where it is a Docker volume).
+    upload_dir: Path = Path("uploads")
+    max_upload_bytes: int = 5 * 1024 * 1024
+    max_attachments_per_claim: int = 10
 
     @property
     def is_local(self) -> bool:

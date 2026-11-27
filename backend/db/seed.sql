@@ -26,4 +26,26 @@ VALUES (
 )
 ON CONFLICT (username) DO NOTHING;
 
+-- One user per remaining persona, for trying the claims API. Password = username.
+-- employee1 and employee2 report to manager1; manager1 reports to admin.
+INSERT INTO users (username, full_name, email, role, password_hash, manager_id)
+VALUES
+    ('manager1', 'Line Manager One', 'manager1@expenseflow.example', 'line_manager',
+     'pbkdf2_sha256$600000$ao5QzXwAz8UlmtFMhD1Wlg==$2hjtmqu9cSB+eR39gEZxt+ujzxb41mz8OHDhONKbYMY=',
+     (SELECT id FROM users WHERE username = 'admin')),
+    ('auditor1', 'Finance Auditor One', 'auditor1@expenseflow.example', 'finance_auditor',
+     'pbkdf2_sha256$600000$nWtvAo9nJ9j1vb+Ul1LFvw==$rJj1D5Dtu2HvGT/16t64NGesAQsJWQJN+7Agu/TAhyE=',
+     (SELECT id FROM users WHERE username = 'admin'))
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO users (username, full_name, email, role, password_hash, manager_id)
+VALUES
+    ('employee1', 'Employee One', 'employee1@expenseflow.example', 'employee',
+     'pbkdf2_sha256$600000$cPugPb0SWCFdpgEvav4aGA==$vh+jOu9M44i7KTHVbDpajTVkv5HBESuZKE6WRtatbT8=',
+     (SELECT id FROM users WHERE username = 'manager1')),
+    ('employee2', 'Employee Two', 'employee2@expenseflow.example', 'employee',
+     'pbkdf2_sha256$600000$4+SYFjg+DiKLwmu5bzZIGQ==$2KWErRCaUN7FabEm4wAn3AHgRTKMrSKw13uJeN/i63I=',
+     (SELECT id FROM users WHERE username = 'manager1'))
+ON CONFLICT (username) DO NOTHING;
+
 COMMIT;

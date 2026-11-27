@@ -41,3 +41,6 @@ junit*.xml
 # OS
 .DS_Store
 Thumbs.db
+
+# Uploaded receipt files (runtime data, never committed)
+uploads/
