@@ -41,9 +41,9 @@ A claim with no receipts can skip steps 2 and 3 and be created and submitted in 
 
 ## Who can do what
 
-An employee sees only their own claims; every other role sees all claims; only the owner can change a claim, and only while it is a draft.
+An employee sees only their own claims; a line manager sees their own, their team's and claims in their approval chain; finance sees all claims (full rule: [audit-and-access.md](audit-and-access.md)). Only the owner can change a claim, and only while it is a draft.
 
-| Action | `employee` | `line_manager`, `finance_auditor`, `finance_head` |
+| Action | `employee` | `line_manager` (own, team, own chain), `finance_auditor`, `finance_head` (all) |
 | --- | --- | --- |
 | Create a claim | Own claim | Own claim |
 | List claims | Own only | All claims |

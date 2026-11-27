@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.errors import AppError
 from app.models import AuditAction, Delegation, Role, User
 from app.schemas.approval import DelegationCreate
-from app.services import audit
+from app.services import access, audit
 from app.services.chain import APPROVER_ROLES, ROLE_RANK
 
 ENTITY_TYPE = "delegation"
@@ -67,6 +67,7 @@ def _covering_for(db: Session, user_id: int, start: date, end: date) -> Delegati
 
 def create(db: Session, user: User, body: DelegationCreate) -> Delegation:
     if user.role not in APPROVER_ROLES:
+        access.deny(db, user, reason="role cannot delegate", entity_type=ENTITY_TYPE)
         raise CannotDelegate()
     if body.delegate_id == user.id:
         raise DelegationInvalid("You cannot delegate to yourself.")
@@ -109,7 +110,7 @@ def create(db: Session, user: User, body: DelegationCreate) -> Delegation:
         db,
         entity_type=ENTITY_TYPE,
         entity_id=delegation.id,
-        action=AuditAction.DELEGATION_CREATED,
+        action=AuditAction.DELEGATED,
         changes={
             "delegator_id": {"old": None, "new": user.id},
             "delegate_id": {"old": None, "new": delegate.id},
@@ -117,7 +118,7 @@ def create(db: Session, user: User, body: DelegationCreate) -> Delegation:
             "to_date": {"old": None, "new": body.to_date.isoformat()},
             "reason": {"old": None, "new": body.reason},
         },
-        actor_id=user.id,
+        actor=user,
     )
     db.commit()
     db.refresh(delegation)
@@ -147,8 +148,8 @@ def cancel(db: Session, user: User, delegation_id: int) -> None:
         db,
         entity_type=ENTITY_TYPE,
         entity_id=delegation.id,
-        action=AuditAction.DELEGATION_CANCELLED,
+        action=AuditAction.DELEGATION_REVOKED,
         changes={"active": {"old": True, "new": False}},
-        actor_id=user.id,
+        actor=user,
     )
     db.commit()

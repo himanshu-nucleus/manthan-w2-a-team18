@@ -84,9 +84,9 @@ def update_rule(db: Session, user: User, code: str, body: PolicyRuleUpdate) -> P
             db,
             entity_type=ENTITY_TYPE,
             entity_id=rule.id,
-            action=AuditAction.POLICY_RULE_UPDATED,
+            action=AuditAction.RULE_UPDATED,
             changes={"code": {"old": rule.code, "new": rule.code}, **diff},
-            actor_id=user.id,
+            actor=user,
         )
     db.commit()
     db.refresh(rule)

@@ -23,6 +23,7 @@ from app.errors import register_exception_handlers
 from app.health import router as health_router
 from app.observability import register_observability
 from app.policy.defaults import ensure_policy_defaults
+from app.request_context import register_request_context
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_observability(app)
+    register_request_context(app)
     register_exception_handlers(app)
 
     app.include_router(health_router)

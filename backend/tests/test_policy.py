@@ -40,7 +40,16 @@ def by_code(rules: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def policy_rule_events(db: Session) -> list[AuditEvent]:
-    return list(db.scalars(select(AuditEvent).where(AuditEvent.entity_type == "policy_rule")))
+    """Rule changes made through the API; the SYSTEM RULE_CREATED rows written when the
+    defaults are inserted at startup are not changes."""
+    return list(
+        db.scalars(
+            select(AuditEvent).where(
+                AuditEvent.entity_type == "policy_rule",
+                AuditEvent.action != AuditAction.RULE_CREATED.value,
+            )
+        )
+    )
 
 
 def test_default_policy_is_inserted_at_startup(client: TestClient, db_session: Session) -> None:
@@ -190,7 +199,7 @@ def test_policy_change_is_written_to_the_audit_trail(
     events = policy_rule_events(db_session)
     assert len(events) == 1
     event = events[0]
-    assert event.action == AuditAction.POLICY_RULE_UPDATED
+    assert event.action == AuditAction.RULE_UPDATED
     assert event.actor_id == head.id
     assert event.entity_id == rule(db_session, "LOCAL_TRIP_LIMIT").id
     assert event.changes["params"] == {"old": {"limit": "2000"}, "new": {"limit": "2500"}}

@@ -52,8 +52,17 @@ def get_current_user(
 def require_role(*roles: Role) -> Callable[..., User]:
     """Dependency factory: allow only users holding one of ``roles``."""
 
-    def dependency(user: User = Depends(get_current_user)) -> User:
+    def dependency(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
         if user.role not in roles:
+            from app.services import access  # local: keeps services out of import time
+
+            access.deny(
+                db,
+                user,
+                reason="role not allowed",
+                entity_type="endpoint",
+                allowed_roles=sorted(r.value for r in roles),
+            )
             raise PermissionDenied()
         return user
 

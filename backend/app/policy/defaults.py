@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import PolicyRule, PolicySetting
+from app.models import AuditAction, PolicyRule, PolicySetting
 
 logger = logging.getLogger(__name__)
 
@@ -196,13 +196,39 @@ def insert_missing_defaults(db: Session) -> int:
     rule_codes = set(db.scalars(select(PolicyRule.code)))
     setting_keys = set(db.scalars(select(PolicySetting.key)))
     added = 0
+    from app.services import audit  # local: defaults is imported by app.main
+
     for rule in DEFAULT_RULES:
         if rule["code"] not in rule_codes:
-            db.add(PolicyRule(**{**rule, "params": dict(rule["params"])}))
+            row = PolicyRule(**{**rule, "params": dict(rule["params"])})
+            db.add(row)
+            db.flush()
+            audit.record(
+                db,
+                entity_type="policy_rule",
+                entity_id=row.id,
+                action=AuditAction.RULE_CREATED,
+                actor=None,  # SYSTEM: inserted at startup
+                changes={
+                    "code": {"old": None, "new": row.code},
+                    "params": {"old": None, "new": row.params},
+                },
+            )
             added += 1
     for setting in DEFAULT_SETTINGS:
         if setting["key"] not in setting_keys:
             db.add(PolicySetting(**setting))
+            audit.record(
+                db,
+                entity_type="policy_setting",
+                entity_id=None,
+                action=AuditAction.SETTING_CREATED,
+                actor=None,  # SYSTEM: inserted at startup
+                changes={
+                    "key": {"old": None, "new": setting["key"]},
+                    "value": {"old": None, "new": setting["value"]},
+                },
+            )
             added += 1
     db.flush()
     return added

@@ -115,11 +115,14 @@ def approve(
     _add_comment(db, claim, user, comment)
     audit.record(
         db,
-        entity_type=claims.ENTITY_TYPE,
-        entity_id=claim.id,
+        entity_type="approval_step",
+        entity_id=step.id,
+        claim_id=claim.id,
         action=AuditAction.STEP_APPROVED,
         changes=_step_changes(db, step, user, on_behalf_of, comment),
-        actor_id=user.id,
+        actor=user,
+        on_behalf_of_id=on_behalf_of,
+        comment=comment,
     )
 
     following = db.scalar(
@@ -147,7 +150,7 @@ def approve(
                     "new": ClaimStatus.APPROVED.value,
                 }
             },
-            actor_id=user.id,
+            actor=user,
         )
     claim.updated_by = user.id
     db.commit()
@@ -181,7 +184,9 @@ def _finish(
             **_step_changes(db, step, user, on_behalf_of, comment),
             "status": {"old": ClaimStatus.PENDING_APPROVAL.value, "new": claim_status.value},
         },
-        actor_id=user.id,
+        actor=user,
+        on_behalf_of_id=on_behalf_of,
+        comment=comment,
     )
     db.commit()
     db.refresh(claim)
@@ -300,11 +305,13 @@ def add_comment(db: Session, user: User, claim_id: int, body: str) -> ClaimComme
     db.flush()
     audit.record(
         db,
-        entity_type=claims.ENTITY_TYPE,
-        entity_id=claim.id,
+        entity_type="claim_comment",
+        entity_id=comment.id,
+        claim_id=claim.id,
         action=AuditAction.COMMENTED,
         changes={f"comments.{comment.id}": {"old": None, "new": body}},
-        actor_id=user.id,
+        actor=user,
+        comment=body,
     )
     db.commit()
     db.refresh(comment)
