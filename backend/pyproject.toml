@@ -1,0 +1,47 @@
+[project]
+name = "manthan-backend"
+version = "0.1.0"
+description = "FastAPI backend for the AI Manthan build."
+requires-python = ">=3.13,<3.14"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `def route(db: Session = Depends(get_db))` is the documented FastAPI idiom.
+# B008 flags function calls in argument defaults and is a false positive here.
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.params.Depends",
+  "fastapi.Query",
+  "fastapi.Path",
+  "fastapi.Body",
+  "fastapi.Header",
+  "fastapi.Cookie",
+  "fastapi.Form",
+  "fastapi.File",
+  "fastapi.Security",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B008", "S101", "D"]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --strict-markers --strict-config"
+markers = [
+  "integration: tests that need an external service such as PostgreSQL",
+]
