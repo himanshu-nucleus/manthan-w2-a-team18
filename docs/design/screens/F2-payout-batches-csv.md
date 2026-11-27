@@ -8,7 +8,7 @@
 | Route (suggested) | /finance/payouts (batch: /finance/payouts/:batchId) |
 | Figma node | 4017:4156 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Finance head (active item: Payout batches) |
+| Sidebar variant | Finance head (active item: Payout batches; nav is Dashboard / Approvals 2 / Payout batches / Policy rules / Approvals & people / Audit trail - no Spend analytics, no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 The finance head groups approved claims into a payout batch, exports the bank file (CSV) and marks the batch paid.

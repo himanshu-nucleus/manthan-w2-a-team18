@@ -88,9 +88,6 @@ Use tabular numerals (`font-variant-numeric: tabular-nums`) for amounts and IDs 
 │ workspace ▾  │                                                      │
 │ nav items    │ Page content (cards, tables, forms) on #f7f6fb       │
 │ ───────      │                                                      │
-│ Notifications│                                                      │
-│ Policy guide │                                                      │
-│ Settings     │                                                      │
 │              │                                                      │
 │ Promo card   │                                                      │
 │ User card    │                                                      │
@@ -105,7 +102,7 @@ Canvas is 1440px wide. The main column is 1180px with ~32px side padding, so con
 
 Fixed 260px, white, right border `--sidebar-border`. From top: ExpenseFlow logo (violet square
 with ph/receipt), **Workspace** role switcher (purple pill with ph/user-switch and caret), primary
-nav, divider, secondary nav (Notifications with badge, Policy guide ph/scales, Settings ph/gear),
+nav, a divider (the old secondary group of Notifications, Policy guide and Settings was removed; see the note below),
 then the **Sidebar Promo Card** and the user card (avatar, name, "Log out of your account", ph/sign-out).
 
 | Variant | Primary nav (badge) | Promo card |
@@ -113,7 +110,14 @@ then the **Sidebar Promo Card** and the user card (avatar, name, "Log out of you
 | Employee | Dashboard · My claims (18) · New claim | Owed to you · ₹38,130 · "Track my claims" |
 | Manager | Team dashboard · Approvals (7) · Out of office | Avg approval time · 6 h · "Open approvals" |
 | Auditor | Dashboard · Audit queue (48) · Audit history | At risk this month · ₹31,450 · "Investigate" |
-| Finance head | Dashboard · Spend analytics · Approvals (2) · Payout batches · Policy rules · Approvals & people · Audit trail | Ready for payout · ₹42.7 L · "Create batch" |
+| Finance head | Dashboard · Approvals (2) · Payout batches · Policy rules · Approvals & people · Audit trail | Ready for payout · ₹42.7 L · "Create batch" |
+
+> **Updated design (re-export, 2026-11-27):** in the screens, the secondary group (Notifications, Policy
+> guide, Settings) has been **removed** from the sidebars. The Finance head sidebar has also lost
+> "Spend analytics", whose charts now live on F0. The manager screens disagree: M3 and M4 still show
+> "Policy guide" below the divider, but M2 shows nothing there. The components sheet in Figma has not
+> been updated and still shows the old items. **Build from the screens**, and check the Policy guide
+> question with design.
 
 The workspace switcher changes the role view. In the app it should only list the roles the
 signed-in user actually has.
@@ -144,6 +148,19 @@ text, white CTA button with violet text and ph/rocket-launch icon.
 24px pill with an icon and a label, in six tones (see the table above). Map it to a shadcn `Badge` with
 custom variants.
 
+### Mobile / Status Bar
+
+The iOS-style status bar ("9:41", signal and battery icons) comes in two variants. It is a device mock only,
+so don't build it. In the app, leave room for it with `env(safe-area-inset-top)`.
+
+### Mobile / Tab Bar
+
+Bottom navigation for the mobile employee screens (MB1–MB9). It replaces the Sidebar below 640px.
+Items: **Home** (ph/house) · **Claims** (ph/receipt) · a raised round violet-gradient **+** button
+in the centre (new claim, opens scan or add) · **Alerts** (ph/bell) · **Profile** (ph/user). It has four
+variants, one per active tab. The active tab has a light violet pill behind its icon and a violet label.
+Pad the bottom with `env(safe-area-inset-bottom)`, and make each touch target at least 44px.
+
 ## Icons
 
 Phosphor Icons, regular weight (`@phosphor-icons/react`). Icons used in the design:
@@ -156,6 +173,9 @@ calendar-x, copy, chat-circle-text, funnel, download-simple, export, flag, moon,
 dots-three-vertical, pencil-simple, trash, eye, lock-simple, arrow-u-up-left, user-switch,
 file-csv, clock-counter-clockwise, buildings, seal-check, x, cloud-arrow-up, image, scales, gear,
 rocket-launch, arrows-clockwise, wallet, hourglass-medium, check, note-pencil.
+
+Added for mobile and the new login: envelope-simple, camera, house, lightning, caret-left, scan,
+wifi-slash, cell-signal-full, battery-full, images.
 
 Expense categories use: airplane-tilt (travel), bed (hotel), fork-knife (meals), taxi (local cab).
 

@@ -8,7 +8,7 @@
 | Route (suggested) | /admin/approvals |
 | Figma node | 4018:4455 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Finance head (active item: Approvals & people) |
+| Sidebar variant | Finance head (active item: Approvals & people; nav is Dashboard / Approvals 2 / Payout batches / Policy rules / Approvals & people / Audit trail - no Spend analytics, no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 The finance head configures how many approval steps a claim goes through (by claim total), reminder and escalation

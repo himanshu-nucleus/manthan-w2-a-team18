@@ -8,7 +8,7 @@
 | Route (suggested) | /auditor/history |
 | Figma node | 4016:3703 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Auditor (Audit history active) |
+| Sidebar variant | Auditor (Audit history active; nav is Dashboard / Audit queue / Audit history only - no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 Read-only log of the auditor's decisions (cleared, line rejected, bulk approved, sent back) with monthly totals, so the auditor and finance can trace what was audited, why, and how each claim entered the queue.
