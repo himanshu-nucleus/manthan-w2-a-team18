@@ -77,6 +77,38 @@ def test_login_with_unknown_username_is_refused(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "invalid_credentials"
 
 
+@pytest.mark.parametrize("role", list(Role))
+def test_every_persona_can_log_in_and_me_returns_same_user(
+    client: TestClient, db_session: Session, role: Role
+) -> None:
+    user = _add_user(db_session, "persona", "password1", role)
+
+    response = client.post(
+        f"{API}/auth/login", json={"username": "persona", "password": "password1"}
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["user"]["role"] == role.value
+    me = client.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["id"] == user.id
+    assert me.json()["role"] == role.value
+
+
+def test_inactive_user_login_is_refused(client: TestClient, db_session: Session) -> None:
+    user = _add_user(db_session, "leaver", "password1", Role.EMPLOYEE)
+    user.is_active = False
+    db_session.flush()
+
+    response = client.post(
+        f"{API}/auth/login", json={"username": "leaver", "password": "password1"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_credentials"
+
+
 def test_me_returns_the_logged_in_user(client: TestClient, head_headers: dict[str, str]) -> None:
     response = client.get(f"{API}/auth/me", headers=head_headers)
 
@@ -166,3 +198,87 @@ def test_finance_head_can_list_users(client: TestClient, head_headers: dict[str,
 
     assert response.status_code == 200
     assert [user["username"] for user in response.json()] == ["admin", "asha.k"]
+
+
+NON_HEAD_ROLES = [Role.EMPLOYEE, Role.LINE_MANAGER, Role.FINANCE_AUDITOR]
+
+
+@pytest.mark.parametrize("role", NON_HEAD_ROLES)
+def test_non_finance_head_can_fetch_own_details(
+    client: TestClient, db_session: Session, role: Role
+) -> None:
+    me = _add_user(db_session, "self.user", "password1", role)
+    headers = _login(client, "self.user", "password1")
+
+    response = client.get(f"{API}/users/{me.id}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["id"] == me.id
+    assert response.json()["role"] == role.value
+
+
+@pytest.mark.parametrize("role", NON_HEAD_ROLES)
+def test_non_finance_head_cannot_fetch_another_user_is_forbidden(
+    client: TestClient, db_session: Session, role: Role
+) -> None:
+    _add_user(db_session, "self.user", "password1", role)
+    other = _add_user(db_session, "other.user", "password1", Role.EMPLOYEE)
+    headers = _login(client, "self.user", "password1")
+
+    response = client.get(f"{API}/users/{other.id}", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+def test_employee_cannot_fetch_another_employee_is_forbidden(
+    client: TestClient, db_session: Session
+) -> None:
+    _add_user(db_session, "emp.one", "password1", Role.EMPLOYEE)
+    colleague = _add_user(db_session, "emp.two", "password1", Role.EMPLOYEE)
+    headers = _login(client, "emp.one", "password1")
+
+    response = client.get(f"{API}/users/{colleague.id}", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+@pytest.mark.parametrize("role", NON_HEAD_ROLES)
+def test_non_finance_head_fetching_unknown_id_is_forbidden_not_found(
+    client: TestClient, db_session: Session, role: Role
+) -> None:
+    _add_user(db_session, "self.user", "password1", role)
+    headers = _login(client, "self.user", "password1")
+
+    response = client.get(f"{API}/users/99999", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+def test_finance_head_can_fetch_any_user(
+    client: TestClient, db_session: Session, head_headers: dict[str, str]
+) -> None:
+    other = _add_user(db_session, "emp.one", "password1", Role.EMPLOYEE)
+
+    response = client.get(f"{API}/users/{other.id}", headers=head_headers)
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "emp.one"
+
+
+def test_finance_head_fetching_unknown_user_is_not_found(
+    client: TestClient, head_headers: dict[str, str]
+) -> None:
+    response = client.get(f"{API}/users/99999", headers=head_headers)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "user_not_found"
+
+
+def test_fetching_user_without_token_is_refused(client: TestClient, finance_head: User) -> None:
+    response = client.get(f"{API}/users/{finance_head.id}")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "not_authenticated"
