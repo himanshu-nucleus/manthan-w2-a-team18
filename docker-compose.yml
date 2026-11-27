@@ -44,11 +44,14 @@ services:
       APP_NAME: ExpenseFlow API
       ENVIRONMENT: development
       LOG_LEVEL: INFO
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8000:8000"
     volumes:
       # Dev convenience: source is mounted so --reload picks up edits.
       - ./backend/app:/app/app
+      # Receipt files survive container rebuilds.
+      - receipts:/app/uploads
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     restart: unless-stopped
 
@@ -81,3 +84,4 @@ services:
 
 volumes:
   db_data:
+  receipts:

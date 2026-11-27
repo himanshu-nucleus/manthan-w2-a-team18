@@ -64,6 +64,7 @@ pytest-asyncio==1.5.0
 pytest-cov==7.1.0
 python-dotenv==1.2.4
 python-engineio==4.15.1
+python-multipart==0.0.34
 python-socketio==5.18.1
 pytokens==0.4.1
 pywin32==312; sys_platform == "win32"  # Windows-only: marker keeps Linux (Docker, CI) builds working

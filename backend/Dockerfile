@@ -46,6 +46,7 @@ RUN python -m pip install --no-index --find-links=/wheels -r requirements.txt \
 
 # Source last: code changes do not invalidate the dependency layers.
 COPY --chown=manthan:manthan app ./app
+RUN mkdir -p /app/uploads && chown manthan:manthan /app/uploads
 
 USER manthan
 
