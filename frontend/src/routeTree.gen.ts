@@ -15,6 +15,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedApprovalsRouteImport } from './routes/_authed/approvals'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedDelegationsRouteImport } from './routes/_authed/delegations'
+import { Route as AuthedInsightsRouteImport } from './routes/_authed/insights'
+import { Route as AuthedPayoutsRouteImport } from './routes/_authed/payouts'
 import { Route as AuthedAdminPeopleRouteImport } from './routes/_authed/admin/people'
 import { Route as AuthedAdminPolicyRulesRouteImport } from './routes/_authed/admin/policy-rules'
 import { Route as AuthedClaimsIndexRouteImport } from './routes/_authed/claims/index'
@@ -49,6 +51,16 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
 const AuthedDelegationsRoute = AuthedDelegationsRouteImport.update({
   id: '/delegations',
   path: '/delegations',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedInsightsRoute = AuthedInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedPayoutsRoute = AuthedPayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAdminPeopleRoute = AuthedAdminPeopleRouteImport.update({
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof AuthedApprovalsRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/delegations': typeof AuthedDelegationsRoute
+  '/insights': typeof AuthedInsightsRoute
+  '/payouts': typeof AuthedPayoutsRoute
   '/admin/people': typeof AuthedAdminPeopleRoute
   '/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
   '/claims/new': typeof AuthedClaimsNewRoute
@@ -102,6 +116,8 @@ export interface FileRoutesByTo {
   '/approvals': typeof AuthedApprovalsRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/delegations': typeof AuthedDelegationsRoute
+  '/insights': typeof AuthedInsightsRoute
+  '/payouts': typeof AuthedPayoutsRoute
   '/admin/people': typeof AuthedAdminPeopleRoute
   '/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
   '/claims/new': typeof AuthedClaimsNewRoute
@@ -117,6 +133,8 @@ export interface FileRoutesById {
   '/_authed/approvals': typeof AuthedApprovalsRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/delegations': typeof AuthedDelegationsRoute
+  '/_authed/insights': typeof AuthedInsightsRoute
+  '/_authed/payouts': typeof AuthedPayoutsRoute
   '/_authed/admin/people': typeof AuthedAdminPeopleRoute
   '/_authed/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
   '/_authed/claims/new': typeof AuthedClaimsNewRoute
@@ -132,6 +150,8 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/dashboard'
     | '/delegations'
+    | '/insights'
+    | '/payouts'
     | '/admin/people'
     | '/admin/policy-rules'
     | '/claims/new'
@@ -145,6 +165,8 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/dashboard'
     | '/delegations'
+    | '/insights'
+    | '/payouts'
     | '/admin/people'
     | '/admin/policy-rules'
     | '/claims/new'
@@ -159,6 +181,8 @@ export interface FileRouteTypes {
     | '/_authed/approvals'
     | '/_authed/dashboard'
     | '/_authed/delegations'
+    | '/_authed/insights'
+    | '/_authed/payouts'
     | '/_authed/admin/people'
     | '/_authed/admin/policy-rules'
     | '/_authed/claims/new'
@@ -217,6 +241,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDelegationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/insights': {
+      id: '/_authed/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof AuthedInsightsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/payouts': {
+      id: '/_authed/payouts'
+      path: '/payouts'
+      fullPath: '/payouts'
+      preLoaderRoute: typeof AuthedPayoutsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/admin/people': {
       id: '/_authed/admin/people'
       path: '/admin/people'
@@ -266,6 +304,8 @@ interface AuthedRouteChildren {
   AuthedApprovalsRoute: typeof AuthedApprovalsRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedDelegationsRoute: typeof AuthedDelegationsRoute
+  AuthedInsightsRoute: typeof AuthedInsightsRoute
+  AuthedPayoutsRoute: typeof AuthedPayoutsRoute
   AuthedAdminPeopleRoute: typeof AuthedAdminPeopleRoute
   AuthedAdminPolicyRulesRoute: typeof AuthedAdminPolicyRulesRoute
   AuthedClaimsNewRoute: typeof AuthedClaimsNewRoute
@@ -278,6 +318,8 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedApprovalsRoute: AuthedApprovalsRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedDelegationsRoute: AuthedDelegationsRoute,
+  AuthedInsightsRoute: AuthedInsightsRoute,
+  AuthedPayoutsRoute: AuthedPayoutsRoute,
   AuthedAdminPeopleRoute: AuthedAdminPeopleRoute,
   AuthedAdminPolicyRulesRoute: AuthedAdminPolicyRulesRoute,
   AuthedClaimsNewRoute: AuthedClaimsNewRoute,

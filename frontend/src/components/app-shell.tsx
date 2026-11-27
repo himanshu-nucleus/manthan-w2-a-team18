@@ -1,5 +1,7 @@
 import {
+  BankIcon,
   CalendarXIcon,
+  ChartBarIcon,
   ListChecksIcon,
   PlusIcon,
   ReceiptIcon,
@@ -24,6 +26,8 @@ interface NavItem {
     | '/delegations'
     | '/admin/policy-rules'
     | '/admin/people'
+    | '/payouts'
+    | '/insights'
   label: string
   icon: Icon
 }
@@ -43,12 +47,15 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   finance_auditor: [
     { to: '/approvals', label: 'Audit queue', icon: ShieldCheckIcon },
+    { to: '/payouts', label: 'Payout batches', icon: BankIcon },
     MY_CLAIMS,
     NEW_CLAIM,
     OUT_OF_OFFICE,
   ],
   finance_head: [
+    { to: '/insights', label: 'Dashboard', icon: ChartBarIcon },
     { to: '/approvals', label: 'Approvals', icon: ListChecksIcon },
+    { to: '/payouts', label: 'Payout batches', icon: BankIcon },
     { to: '/claims', label: 'All claims', icon: ReceiptIcon },
     { to: '/admin/policy-rules', label: 'Policy rules', icon: ScalesIcon },
     { to: '/admin/people', label: 'People', icon: UsersThreeIcon },
