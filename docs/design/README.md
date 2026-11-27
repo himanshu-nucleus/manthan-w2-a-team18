@@ -1,0 +1,107 @@
+# ExpenseFlow UI design
+
+Screens exported from Figma for the frontend build (React 19 + Vite + shadcn/ui).
+
+- **Figma:** [ExpenseFlow · UI](https://www.figma.com/design/1XAnGEKVeQflpveXADQ7MX/shadcn-ui-kit-community-edition--Community-?node-id=4006-2) (page node `4006:2`)
+- **Exported:** 2026-11-27, PNG at 1× (1440px wide)
+- **Start here:** [foundations.md](./foundations.md) covers colour tokens, type, spacing, the shared
+  Sidebar/Topbar layout, components and icons. Build those first, because every screen reuses them.
+
+Each screen has a PNG and a Markdown spec in [screens/](./screens/) with the same name. The spec
+covers purpose, layout, every element and its copy, interactions, the data and API it needs, and build notes.
+
+## Screen index
+
+### Authentication
+
+| ID | Screen | Spec |
+|---|---|---|
+| L1 | Login | [L1-login.md](./screens/L1-login.md) |
+
+### Employee
+
+| ID | Screen | Spec |
+|---|---|---|
+| E1 | Employee dashboard | [E1-employee-dashboard.md](./screens/E1-employee-dashboard.md) |
+| E2 | My claims | [E2-my-claims.md](./screens/E2-my-claims.md) |
+| E3 | Draft with expenses (lines, receipts, live policy) | [E3-draft-with-expenses.md](./screens/E3-draft-with-expenses.md) |
+| E4 | Review & submit | [E4-review-and-submit.md](./screens/E4-review-and-submit.md) |
+| E5 | Claim detail, timeline & clarification | [E5-claim-detail-timeline.md](./screens/E5-claim-detail-timeline.md) |
+
+### New claim flow (employee)
+
+| ID | Screen | Spec |
+|---|---|---|
+| N1 | Step 1: Start a new claim | [N1-start-new-claim.md](./screens/N1-start-new-claim.md) |
+| N2 | Step 2: Empty draft, add the first expense | [N2-empty-draft.md](./screens/N2-empty-draft.md) |
+| N3 | Step 3: Add an expense (sheet) | [N3-add-expense-sheet.md](./screens/N3-add-expense-sheet.md) |
+| N4 | Step 4 done: Claim submitted (Figma label "N6") | [N4-claim-submitted.md](./screens/N4-claim-submitted.md) |
+
+### Line manager
+
+| ID | Screen | Spec |
+|---|---|---|
+| M1 | Manager dashboard | [M1-manager-dashboard.md](./screens/M1-manager-dashboard.md) |
+| M2 | Approvals queue (bulk approve) | [M2-approvals-queue.md](./screens/M2-approvals-queue.md) |
+| M3 | Review a claim (approve / reject / send back) | [M3-review-claim.md](./screens/M3-review-claim.md) |
+| M4 | Out of office & delegation | [M4-out-of-office-delegation.md](./screens/M4-out-of-office-delegation.md) |
+
+### Finance auditor
+
+| ID | Screen | Spec |
+|---|---|---|
+| A0 | Auditor dashboard | [A0-auditor-dashboard.md](./screens/A0-auditor-dashboard.md) |
+| A1 | Audit queue (filters, bulk approve, 10% sample) | [A1-audit-queue.md](./screens/A1-audit-queue.md) |
+| A2 | Audit a claim (duplicate detection) | [A2-audit-claim-duplicates.md](./screens/A2-audit-claim-duplicates.md) |
+| A3 | Audit history | [A3-audit-history.md](./screens/A3-audit-history.md) |
+
+### Finance head / admin
+
+| ID | Screen | Spec |
+|---|---|---|
+| F0 | Finance head dashboard | [F0-finance-head-dashboard.md](./screens/F0-finance-head-dashboard.md) |
+| F1 | Spend analytics dashboard | [F1-spend-analytics.md](./screens/F1-spend-analytics.md) |
+| F2 | Payout batches & CSV export | [F2-payout-batches-csv.md](./screens/F2-payout-batches-csv.md) |
+| F3 | Policy rules (configuration) | [F3-policy-rules.md](./screens/F3-policy-rules.md) |
+| F4 | Approval chain & people | [F4-approval-chain-people.md](./screens/F4-approval-chain-people.md) |
+| F5 | Audit trail (append-only) | [F5-audit-trail.md](./screens/F5-audit-trail.md) |
+
+## Main flow
+
+```
+L1 Login ─▶ role dashboard (E1 / M1 / A0 / F0)
+
+Employee:  E1 ─▶ N1 start ─▶ N2 empty draft ─▶ N3 add expense (sheet) ─▶ E3 draft ─▶ E4 review ─▶ N4 submitted
+           E1 / E2 ─▶ E5 claim detail (timeline, answer clarification)
+Manager:   M1 ─▶ M2 queue ─▶ M3 review ─▶ approve │ reject │ send back (─▶ employee E5)
+Auditor:   A0 ─▶ A1 queue ─▶ A2 audit (duplicates) ─▶ approve for payout │ return
+Finance:   F0 ─▶ F2 payout batch ─▶ CSV export;  F3 policy rules, F4 approval chain, F5 audit trail
+```
+
+Claim lifecycle shown in the designs: Draft → Submitted → Manager approved → Audited → In payout batch → Paid,
+with side paths Sent back (needs clarification) and Rejected. The backend currently implements
+`DRAFT` and `SUBMITTED` only (see [../claims-api.md](../claims-api.md)). Each spec's "Data & API" section
+marks what is not yet in the API.
+
+## Suggested build order
+
+1. Foundations: tokens in `index.css`, Geist font, the `StatusChip`, `KpiCard`, `Sidebar` (role-driven config), `Topbar` and `AppShell` components.
+2. L1 Login, then the employee path E1 → N1–N4 → E3/E4 → E2 → E5. This is the demo's core journey.
+3. Manager M2/M3, then auditor A1/A2, then finance F2.
+4. The dashboards (M1, A0, F0, F1) and configuration screens (F3, F4, F5, M4).
+
+## Folder layout
+
+```
+docs/design/
+  README.md              this index
+  foundations.md         tokens, layout, components, icons
+  components/
+    components-sheet.png Figma "ExpenseFlow Components" frame
+  screens/
+    <ID>-<name>.png      1440px export of each Figma frame
+    <ID>-<name>.md       screen spec
+```
+
+To refresh a PNG after a design change, re-export the frame from Figma at 1× (or ask Claude
+to re-export it with the Figma MCP, using the node IDs given in each spec).
