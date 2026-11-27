@@ -6,8 +6,9 @@ import { createQueryClient } from '@/lib/query-client'
 import { createAppRouter } from '@/router'
 import './index.css'
 
-// Mocks run in dev only; set VITE_ENABLE_MOCKS=false to hit a real API.
-if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== 'false') {
+// Dev requests go to the real API through the Vite proxy. Set VITE_ENABLE_MOCKS=true to
+// serve them from the MSW handlers in src/mocks instead (no backend needed).
+if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === 'true') {
   const { worker } = await import('@/mocks/browser')
   await worker.start({ onUnhandledFrame: 'bypass' })
 }
