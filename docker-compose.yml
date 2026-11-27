@@ -1,11 +1,10 @@
 # Whole ExpenseFlow stack from a fresh clone: `docker compose up --build`
 #
+#   web         http://localhost:8080 (SPA; proxies /api to the api service)
 #   api         http://localhost:8000/docs
 #   prometheus  http://localhost:9090
 #   grafana     http://localhost:3000
 #   postgres    localhost:5433 (host port; 5432 inside the compose network)
-#
-# The web service is added here once frontend/ exists.
 
 services:
   db:
@@ -53,6 +52,18 @@ services:
       # Receipt files survive container rebuilds.
       - receipts:/app/uploads
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: manthan-web
+    depends_on:
+      - api
+    ports:
+      # 8080, not 5173, so it does not clash with the Vite dev server.
+      - "8080:80"
     restart: unless-stopped
 
   prometheus:

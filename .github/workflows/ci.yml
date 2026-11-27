@@ -49,3 +49,46 @@ jobs:
         run: |
           python -m pip install pip-audit
           pip-audit -r requirements.txt
+
+  web:
+    name: Web - lint, format, test, build, dependency check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Version comes from the packageManager field (pnpm@11.16.0).
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm lint
+
+      - name: Prettier
+        run: pnpm format:check
+
+      - name: Vitest
+        run: pnpm test:run
+
+      - name: Build (tsc + vite)
+        run: pnpm build
+
+      - name: Dependency vulnerability check
+        run: pnpm audit --prod --audit-level high

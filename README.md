@@ -11,6 +11,7 @@ docker compose up --build
 
 | URL | What |
 |---|---|
+| http://localhost:8080 | Web app (ExpenseFlow UI) |
 | http://localhost:8000/docs | API (Swagger UI) |
 | http://localhost:8000/health | Liveness |
 | http://localhost:8000/metrics | Prometheus metrics |
