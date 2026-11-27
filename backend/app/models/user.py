@@ -32,6 +32,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str | None] = mapped_column(String(254), unique=True, nullable=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Printed on payout files; NULL when unknown.
+    department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     manager_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
     )

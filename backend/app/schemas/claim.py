@@ -107,6 +107,9 @@ class ClaimSummary(BaseModel):
     total_amount: Decimal
     submitted_at: datetime | None
     policy_outcome: str | None
+    approved_at: datetime | None
+    paid_at: datetime | None
+    payout_batch_reference: str | None
     submission_round: int
     version: int
     created_at: datetime

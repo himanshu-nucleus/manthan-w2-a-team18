@@ -2009,6 +2009,450 @@
           }
         }
       }
+    },
+    "/api/v1/payouts/eligible-claims": {
+      "get": {
+        "tags": [
+          "payouts"
+        ],
+        "summary": "Preview the claims a batch would pay for a date range or TODAY; changes nothing (finance_head, finance_auditor)",
+        "operationId": "preview_eligible_claims",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "TODAY",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range"
+            }
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fromdate"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Todate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligiblePreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (for example a date range in the future).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with existing data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payouts/batches": {
+      "post": {
+        "tags": [
+          "payouts"
+        ],
+        "summary": "Create a batch with every eligible claim in the range and mark them PAID (finance_head, finance_auditor)",
+        "operationId": "create_payout_batch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (for example a date range in the future).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with existing data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "payouts"
+        ],
+        "summary": "List payout batches, newest first (finance_head, finance_auditor)",
+        "operationId": "list_payout_batches",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payouts/batches/{batch_id}": {
+      "get": {
+        "tags": [
+          "payouts"
+        ],
+        "summary": "One payout batch with its claims (finance_head, finance_auditor)",
+        "operationId": "get_payout_batch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Batch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payouts/batches/{batch_id}/export": {
+      "get": {
+        "tags": [
+          "payouts"
+        ],
+        "summary": "Download the batch's mock bank file as CSV; every download is audited (finance_head, finance_auditor)",
+        "operationId": "export_payout_batch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Batch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The CSV file",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2242,6 +2686,328 @@
           "created_at"
         ],
         "title": "AuditEventOut"
+      },
+      "BatchCreate": {
+        "properties": {
+          "range": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "TODAY"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range"
+          },
+          "fromDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fromdate"
+          },
+          "toDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Todate"
+          }
+        },
+        "type": "object",
+        "title": "BatchCreate",
+        "description": "Either ``{\"range\": \"TODAY\"}`` or ``{\"fromDate\": ..., \"toDate\": ...}`` (IST days,\ninclusive, on the claim's approval date)."
+      },
+      "BatchDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "batch_reference": {
+            "type": "string",
+            "title": "Batch Reference"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "title": "From Date"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "title": "To Date"
+          },
+          "value_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Value Date"
+          },
+          "claim_count": {
+            "type": "integer",
+            "title": "Claim Count"
+          },
+          "total_amount": {
+            "type": "string",
+            "title": "Total Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "export_count": {
+            "type": "integer",
+            "title": "Export Count"
+          },
+          "first_exported_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Exported At"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "batch_reference",
+          "from_date",
+          "to_date",
+          "value_date",
+          "claim_count",
+          "total_amount",
+          "currency",
+          "status",
+          "file_name",
+          "export_count",
+          "first_exported_at",
+          "created_by",
+          "created_at",
+          "items"
+        ],
+        "title": "BatchDetail"
+      },
+      "BatchItemOut": {
+        "properties": {
+          "transaction_reference": {
+            "type": "string",
+            "title": "Transaction Reference"
+          },
+          "claim_id": {
+            "type": "integer",
+            "title": "Claim Id"
+          },
+          "claim_code": {
+            "type": "string",
+            "title": "Claim Code"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_code": {
+            "type": "string",
+            "title": "Employee Code"
+          },
+          "beneficiary_name": {
+            "type": "string",
+            "title": "Beneficiary Name"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          },
+          "narration": {
+            "type": "string",
+            "title": "Narration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transaction_reference",
+          "claim_id",
+          "claim_code",
+          "employee_id",
+          "employee_code",
+          "beneficiary_name",
+          "department",
+          "amount",
+          "narration"
+        ],
+        "title": "BatchItemOut"
+      },
+      "BatchPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "BatchPage"
+      },
+      "BatchSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "batch_reference": {
+            "type": "string",
+            "title": "Batch Reference"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "title": "From Date"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "title": "To Date"
+          },
+          "value_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Value Date"
+          },
+          "claim_count": {
+            "type": "integer",
+            "title": "Claim Count"
+          },
+          "total_amount": {
+            "type": "string",
+            "title": "Total Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "export_count": {
+            "type": "integer",
+            "title": "Export Count"
+          },
+          "first_exported_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Exported At"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "batch_reference",
+          "from_date",
+          "to_date",
+          "value_date",
+          "claim_count",
+          "total_amount",
+          "currency",
+          "status",
+          "file_name",
+          "export_count",
+          "first_exported_at",
+          "created_by",
+          "created_at"
+        ],
+        "title": "BatchSummary"
       },
       "Body_upload_attachment": {
         "properties": {
@@ -2557,6 +3323,41 @@
             ],
             "title": "Policy Outcome"
           },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payout_batch_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payout Batch Reference"
+          },
           "submission_round": {
             "type": "integer",
             "title": "Submission Round"
@@ -2620,6 +3421,9 @@
           "total_amount",
           "submitted_at",
           "policy_outcome",
+          "approved_at",
+          "paid_at",
+          "payout_batch_reference",
           "submission_round",
           "version",
           "created_at",
@@ -2674,10 +3478,11 @@
           "APPROVED",
           "REJECTED",
           "CLARIFICATION_REQUESTED",
-          "DUPLICATE"
+          "DUPLICATE",
+          "PAID"
         ],
         "title": "ClaimStatus",
-        "description": "Claim lifecycle.\n\nDRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL\nPENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED\nCLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED\nSUBMITTED -> DUPLICATE when a line repeats an earlier line's vendor, amount and\nreceipt number; final, no approval chain, not editable.\nSUBMITTED is transient: the policy engine runs in the same transaction."
+        "description": "Claim lifecycle.\n\nDRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL\nPENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED\nCLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED\nSUBMITTED -> DUPLICATE when a line repeats an earlier line's vendor, amount and\nreceipt number; final, no approval chain, not editable.\nAPPROVED | AUTO_APPROVED -> PAID (in a payout batch)\nSUBMITTED is transient: the policy engine runs in the same transaction."
       },
       "ClaimSummary": {
         "properties": {
@@ -2735,6 +3540,41 @@
             ],
             "title": "Policy Outcome"
           },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payout_batch_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payout Batch Reference"
+          },
           "submission_round": {
             "type": "integer",
             "title": "Submission Round"
@@ -2764,6 +3604,9 @@
           "total_amount",
           "submitted_at",
           "policy_outcome",
+          "approved_at",
+          "paid_at",
+          "payout_batch_reference",
           "submission_round",
           "version",
           "created_at",
@@ -2997,6 +3840,105 @@
           "cancelled_at"
         ],
         "title": "DelegationOut"
+      },
+      "EligibleClaim": {
+        "properties": {
+          "claim_id": {
+            "type": "integer",
+            "title": "Claim Id"
+          },
+          "claim_code": {
+            "type": "string",
+            "title": "Claim Code"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_code": {
+            "type": "string",
+            "title": "Employee Code"
+          },
+          "beneficiary_name": {
+            "type": "string",
+            "title": "Beneficiary Name"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Approved At"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claim_id",
+          "claim_code",
+          "employee_id",
+          "employee_code",
+          "beneficiary_name",
+          "department",
+          "status",
+          "approved_at",
+          "amount"
+        ],
+        "title": "EligibleClaim"
+      },
+      "EligiblePreview": {
+        "properties": {
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "title": "From Date"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "title": "To Date"
+          },
+          "claim_count": {
+            "type": "integer",
+            "title": "Claim Count"
+          },
+          "total_amount": {
+            "type": "string",
+            "title": "Total Amount"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/EligibleClaim"
+            },
+            "type": "array",
+            "title": "Claims"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_date",
+          "to_date",
+          "claim_count",
+          "total_amount",
+          "claims"
+        ],
+        "title": "EligiblePreview"
       },
       "ErrorDetail": {
         "properties": {
