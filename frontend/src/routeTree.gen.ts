@@ -12,7 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthedApprovalsRouteImport } from './routes/_authed/approvals'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedDelegationsRouteImport } from './routes/_authed/delegations'
+import { Route as AuthedAdminPeopleRouteImport } from './routes/_authed/admin/people'
+import { Route as AuthedAdminPolicyRulesRouteImport } from './routes/_authed/admin/policy-rules'
+import { Route as AuthedClaimsIndexRouteImport } from './routes/_authed/claims/index'
+import { Route as AuthedClaimsNewRouteImport } from './routes/_authed/claims/new'
+import { Route as AuthedClaimsClaimIdIndexRouteImport } from './routes/_authed/claims/$claimId/index'
+import { Route as AuthedClaimsClaimIdEditRouteImport } from './routes/_authed/claims/$claimId/edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +36,135 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedApprovalsRoute = AuthedApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedDelegationsRoute = AuthedDelegationsRouteImport.update({
+  id: '/delegations',
+  path: '/delegations',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAdminPeopleRoute = AuthedAdminPeopleRouteImport.update({
+  id: '/admin/people',
+  path: '/admin/people',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAdminPolicyRulesRoute = AuthedAdminPolicyRulesRouteImport.update({
+  id: '/admin/policy-rules',
+  path: '/admin/policy-rules',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedClaimsIndexRoute = AuthedClaimsIndexRouteImport.update({
+  id: '/claims/',
+  path: '/claims/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedClaimsNewRoute = AuthedClaimsNewRouteImport.update({
+  id: '/claims/new',
+  path: '/claims/new',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedClaimsClaimIdIndexRoute =
+  AuthedClaimsClaimIdIndexRouteImport.update({
+    id: '/claims/$claimId/',
+    path: '/claims/$claimId/',
+    getParentRoute: () => AuthedRoute,
+  } as any)
+const AuthedClaimsClaimIdEditRoute = AuthedClaimsClaimIdEditRouteImport.update({
+  id: '/claims/$claimId/edit',
+  path: '/claims/$claimId/edit',
   getParentRoute: () => AuthedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/approvals': typeof AuthedApprovalsRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/delegations': typeof AuthedDelegationsRoute
+  '/admin/people': typeof AuthedAdminPeopleRoute
+  '/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
+  '/claims/new': typeof AuthedClaimsNewRoute
+  '/claims/': typeof AuthedClaimsIndexRoute
+  '/claims/$claimId/edit': typeof AuthedClaimsClaimIdEditRoute
+  '/claims/$claimId/': typeof AuthedClaimsClaimIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/approvals': typeof AuthedApprovalsRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/delegations': typeof AuthedDelegationsRoute
+  '/admin/people': typeof AuthedAdminPeopleRoute
+  '/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
+  '/claims/new': typeof AuthedClaimsNewRoute
+  '/claims': typeof AuthedClaimsIndexRoute
+  '/claims/$claimId/edit': typeof AuthedClaimsClaimIdEditRoute
+  '/claims/$claimId': typeof AuthedClaimsClaimIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authed/approvals': typeof AuthedApprovalsRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/delegations': typeof AuthedDelegationsRoute
+  '/_authed/admin/people': typeof AuthedAdminPeopleRoute
+  '/_authed/admin/policy-rules': typeof AuthedAdminPolicyRulesRoute
+  '/_authed/claims/new': typeof AuthedClaimsNewRoute
+  '/_authed/claims/': typeof AuthedClaimsIndexRoute
+  '/_authed/claims/$claimId/edit': typeof AuthedClaimsClaimIdEditRoute
+  '/_authed/claims/$claimId/': typeof AuthedClaimsClaimIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/approvals'
+    | '/dashboard'
+    | '/delegations'
+    | '/admin/people'
+    | '/admin/policy-rules'
+    | '/claims/new'
+    | '/claims/'
+    | '/claims/$claimId/edit'
+    | '/claims/$claimId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard'
-  id: '__root__' | '/' | '/_authed' | '/login' | '/_authed/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/approvals'
+    | '/dashboard'
+    | '/delegations'
+    | '/admin/people'
+    | '/admin/policy-rules'
+    | '/claims/new'
+    | '/claims'
+    | '/claims/$claimId/edit'
+    | '/claims/$claimId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/login'
+    | '/_authed/approvals'
+    | '/_authed/dashboard'
+    | '/_authed/delegations'
+    | '/_authed/admin/people'
+    | '/_authed/admin/policy-rules'
+    | '/_authed/claims/new'
+    | '/_authed/claims/'
+    | '/_authed/claims/$claimId/edit'
+    | '/_authed/claims/$claimId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/approvals': {
+      id: '/_authed/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AuthedApprovalsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -95,15 +210,80 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/delegations': {
+      id: '/_authed/delegations'
+      path: '/delegations'
+      fullPath: '/delegations'
+      preLoaderRoute: typeof AuthedDelegationsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/admin/people': {
+      id: '/_authed/admin/people'
+      path: '/admin/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof AuthedAdminPeopleRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/admin/policy-rules': {
+      id: '/_authed/admin/policy-rules'
+      path: '/admin/policy-rules'
+      fullPath: '/admin/policy-rules'
+      preLoaderRoute: typeof AuthedAdminPolicyRulesRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/claims/': {
+      id: '/_authed/claims/'
+      path: '/claims'
+      fullPath: '/claims/'
+      preLoaderRoute: typeof AuthedClaimsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/claims/new': {
+      id: '/_authed/claims/new'
+      path: '/claims/new'
+      fullPath: '/claims/new'
+      preLoaderRoute: typeof AuthedClaimsNewRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/claims/$claimId/': {
+      id: '/_authed/claims/$claimId/'
+      path: '/claims/$claimId'
+      fullPath: '/claims/$claimId/'
+      preLoaderRoute: typeof AuthedClaimsClaimIdIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/claims/$claimId/edit': {
+      id: '/_authed/claims/$claimId/edit'
+      path: '/claims/$claimId/edit'
+      fullPath: '/claims/$claimId/edit'
+      preLoaderRoute: typeof AuthedClaimsClaimIdEditRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
+  AuthedApprovalsRoute: typeof AuthedApprovalsRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedDelegationsRoute: typeof AuthedDelegationsRoute
+  AuthedAdminPeopleRoute: typeof AuthedAdminPeopleRoute
+  AuthedAdminPolicyRulesRoute: typeof AuthedAdminPolicyRulesRoute
+  AuthedClaimsNewRoute: typeof AuthedClaimsNewRoute
+  AuthedClaimsIndexRoute: typeof AuthedClaimsIndexRoute
+  AuthedClaimsClaimIdEditRoute: typeof AuthedClaimsClaimIdEditRoute
+  AuthedClaimsClaimIdIndexRoute: typeof AuthedClaimsClaimIdIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedApprovalsRoute: AuthedApprovalsRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedDelegationsRoute: AuthedDelegationsRoute,
+  AuthedAdminPeopleRoute: AuthedAdminPeopleRoute,
+  AuthedAdminPolicyRulesRoute: AuthedAdminPolicyRulesRoute,
+  AuthedClaimsNewRoute: AuthedClaimsNewRoute,
+  AuthedClaimsIndexRoute: AuthedClaimsIndexRoute,
+  AuthedClaimsClaimIdEditRoute: AuthedClaimsClaimIdEditRoute,
+  AuthedClaimsClaimIdIndexRoute: AuthedClaimsClaimIdIndexRoute,
 }
 
 const AuthedRouteWithChildren =

@@ -2,15 +2,12 @@ import type { QueryClient } from '@tanstack/react-query'
 import { meQueryOptions, type Role, type User } from './api'
 import { clearToken, getToken } from './token-storage'
 
-/**
- * Landing page per role after sign-in (E1 / M1 / A0 / F0 in docs/design).
- * Every role uses the shared placeholder until those dashboards are built.
- */
+/** Landing page per role after sign-in. Dashboards (E1/M1/A0/F0) have no API yet. */
 const ROLE_HOME: Record<Role, string> = {
-  employee: '/dashboard',
-  line_manager: '/dashboard',
-  finance_auditor: '/dashboard',
-  finance_head: '/dashboard',
+  employee: '/claims',
+  line_manager: '/approvals',
+  finance_auditor: '/approvals',
+  finance_head: '/approvals',
 }
 
 export function roleHome(role: Role) {

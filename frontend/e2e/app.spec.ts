@@ -24,12 +24,12 @@ test('employee signs in, survives a reload and signs out', async ({ page }) => {
   await page.getByLabel('Password').fill('password')
   await page.getByRole('button', { name: 'Sign in' }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
-  await expect(page.getByText('Signed in as employee@expenseflow.example')).toBeVisible()
+  await expect(page).toHaveURL(/\/claims$/)
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByText('My claims')).toBeVisible()
 
   await page.reload()
-  await expect(page.getByText('Signed in as employee@expenseflow.example')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByText('My claims')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.getByRole('button', { name: 'Sign out' }).first().click()
   await expect(page).toHaveURL(/\/login$/)
 })

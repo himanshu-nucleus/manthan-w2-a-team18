@@ -34,7 +34,7 @@ describe('login page', () => {
     expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument()
   })
 
-  it('sends the email as username, stores the token and lands on the dashboard', async () => {
+  it('sends the email as username, stores the token and lands on their role home page', async () => {
     let sentBody: unknown
     server.events.on('request:start', async ({ request }) => {
       if (request.url.endsWith('/auth/login')) sentBody = await request.clone().json()
@@ -42,8 +42,8 @@ describe('login page', () => {
     const { router } = renderRoute('/login')
     await fillAndSubmit(employee.email!, MOCK_PASSWORD)
 
-    expect(await screen.findByText(`Hi ${employee.full_name}`)).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/dashboard')
+    expect(await screen.findByText(employee.full_name)).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/claims')
     expect(sentBody).toEqual({ username: employee.email, password: MOCK_PASSWORD })
     expect(getToken()).toBe(`mock-token-${employee.id}`)
     server.events.removeAllListeners()
@@ -72,20 +72,20 @@ describe('login page', () => {
     expect(router.state.location.search).toEqual({ redirect: '/dashboard' })
 
     await fillAndSubmit(employee.email!, MOCK_PASSWORD)
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/claims'))
   })
 
   it('ignores an off-site ?redirect=', async () => {
     const { router } = renderRoute('/login?redirect=//evil.example')
     await fillAndSubmit(employee.email!, MOCK_PASSWORD)
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/claims'))
   })
 
   it('skips the login page when a valid session already exists', async () => {
     setToken(`mock-token-${employee.id}`)
     const { router } = renderRoute('/login')
-    expect(await screen.findByText(`Hi ${employee.full_name}`)).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/dashboard')
+    expect(await screen.findByText(employee.full_name)).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/claims')
   })
 })
 
@@ -106,7 +106,7 @@ describe('protected routes', () => {
   it('sign the user out', async () => {
     setToken(`mock-token-${employee.id}`)
     const { router } = renderRoute('/dashboard')
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Sign out' }))[0])
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
     expect(getToken()).toBeNull()
   })
