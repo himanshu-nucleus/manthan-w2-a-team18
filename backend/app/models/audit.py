@@ -64,6 +64,13 @@ class AuditAction(StrEnum):
     LOGIN_FAILED = "LOGIN_FAILED"
     ACCESS_DENIED = "ACCESS_DENIED"
 
+    # Legacy names, never written since migration 0006; kept so older rows can be matched.
+    POLICY_RULE_UPDATED = "POLICY_RULE_UPDATED"
+    BATCH_EXPORTED = "BATCH_EXPORTED"
+    PAID = "PAID"
+    DELEGATION_CREATED = "DELEGATION_CREATED"
+    DELEGATION_CANCELLED = "DELEGATION_CANCELLED"
+
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
