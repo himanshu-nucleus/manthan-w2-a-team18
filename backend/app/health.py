@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health", summary="Liveness probe")
+@router.get("/health", summary="Liveness - is the API process up (public, ops only)")
 def health(settings: Settings = Depends(get_settings)) -> dict[str, str]:
     """Return 200 whenever the process is running. Never touches the database."""
     return {
@@ -35,7 +35,11 @@ def health(settings: Settings = Depends(get_settings)) -> dict[str, str]:
     }
 
 
-@router.get("/health/ready", summary="Readiness probe")
+@router.get(
+    "/health/ready",
+    summary="Readiness - 200 if the database answers, 503 if not (public, ops only)",
+    responses={503: {"description": "Database unreachable; body is `{status, database}`."}},
+)
 def readiness(response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
     """Return 200 when the database answers, 503 when it does not.
 

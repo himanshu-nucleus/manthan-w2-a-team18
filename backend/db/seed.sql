@@ -26,4 +26,39 @@ VALUES (
 )
 ON CONFLICT (username) DO NOTHING;
 
+-- One demo login per remaining persona. Hashes made with app.security.hash_password.
+-- Line manager. Login: manager / manager.
+INSERT INTO users (username, full_name, email, role, password_hash)
+VALUES (
+    'manager',
+    'Demo Line Manager',
+    'line.manager@expenseflow.example',
+    'line_manager',
+    'pbkdf2_sha256$600000$6kSE967UH4XiR24CkPdilQ==$pdI3Z75nwtGrS9Zi4I5Ot3/QLOnG3CxeKcLSmV1JAyA='
+)
+ON CONFLICT (username) DO NOTHING;
+
+-- Finance auditor. Login: auditor / auditor.
+INSERT INTO users (username, full_name, email, role, password_hash)
+VALUES (
+    'auditor',
+    'Demo Finance Auditor',
+    'finance.auditor@expenseflow.example',
+    'finance_auditor',
+    'pbkdf2_sha256$600000$TAIWwy1OIYQMBnq88N00Mg==$SKa6Z2JFWPXX7NIBh/Y6ES896q2CRF1vGhNXI7yWLVI='
+)
+ON CONFLICT (username) DO NOTHING;
+
+-- Employee reporting to 'manager'. Login: employee / employee.
+INSERT INTO users (username, full_name, email, role, manager_id, password_hash)
+VALUES (
+    'employee',
+    'Demo Employee',
+    'employee@expenseflow.example',
+    'employee',
+    (SELECT id FROM users WHERE username = 'manager'),
+    'pbkdf2_sha256$600000$X/4hrVaVGyXL+VaoQAP9cA==$7cdqhWWBFOq9uLUmpvKVajuWK6esHZKQKEpQNpExHeA='
+)
+ON CONFLICT (username) DO NOTHING;
+
 COMMIT;
