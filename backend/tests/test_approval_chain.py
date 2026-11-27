@@ -294,12 +294,6 @@ def test_delegating_to_someone_who_has_delegated_away_is_refused(
     assert response.json()["error"]["code"] == "delegation_invalid"
 
 
-@pytest.mark.xfail(
-    reason="Chain check only looks at the delegate's existing delegations: once A -> B "
-    "exists, B -> C is still accepted, forming A -> B -> C (app/services/delegations.py, "
-    "create() never checks whether the delegator is themselves someone's delegate).",
-    strict=True,
-)
 def test_delegating_away_while_holding_someone_elses_delegation_is_refused(
     client: TestClient, db_session: Session, org: dict[str, User]
 ) -> None:
@@ -309,6 +303,9 @@ def test_delegating_away_while_holding_someone_elses_delegation_is_refused(
     response = _delegate(client, _login(client, other_manager), org["auditor"])
 
     assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "delegation_invalid"
+    assert "standing in for another approver" in error["message"]
 
 
 def test_delegate_approves_on_behalf_of_the_manager_and_the_step_and_audit_record_it(
