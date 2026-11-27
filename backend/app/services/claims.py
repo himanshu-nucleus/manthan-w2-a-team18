@@ -1,8 +1,12 @@
-"""Claim rules: ownership, draft vs submit, validation and the audit trail.
+"""Claim rules: ownership, draft vs submit, validation, policy and the audit trail.
 
 Access rule: an employee sees only their own claims; every other role sees all
-claims. Only the owner may change a claim, and only while it is a DRAFT.
-A claim the caller may not see is reported as not found, so ids cannot be probed.
+claims. Only the owner may change a claim, and only while it is DRAFT or
+CLARIFICATION_REQUESTED. A claim the caller may not see is reported as not found,
+so ids cannot be probed.
+
+Submit (and resubmit) runs, in one transaction: full validation -> SUBMITTED ->
+policy engine -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL with a new chain.
 """
 
 from __future__ import annotations
@@ -17,23 +21,25 @@ from sqlalchemy.orm import Session
 
 from app.errors import AppError
 from app.models import (
+    EDITABLE_STATUSES,
     AuditAction,
     AuditEvent,
     Claim,
     ClaimAttachment,
     ClaimLine,
+    ClaimPolicyResult,
     ClaimStatus,
     ExpenseCategory,
+    PolicyOutcome,
     Role,
     User,
 )
+from app.policy import engine
 from app.schemas.claim import ClaimWrite
-from app.services import audit
+from app.services import audit, chain
 
 ENTITY_TYPE = "claim"
 
-# A receipt number and an uploaded receipt are mandatory above this amount (INR).
-RECEIPT_REQUIRED_ABOVE = Decimal("500")
 CENTS = Decimal("0.01")
 
 LINE_FIELDS = (
@@ -64,7 +70,7 @@ class NotClaimOwner(AppError):
 class ClaimNotEditable(AppError):
     status_code = status.HTTP_409_CONFLICT
     code = "claim_not_editable"
-    message = "Only a DRAFT claim can be changed."
+    message = "Only a DRAFT or CLARIFICATION_REQUESTED claim can be changed."
 
 
 class ClaimInvalid(AppError):
@@ -94,12 +100,12 @@ def get_visible_claim(db: Session, user: User, claim_id: int, *, lock: bool = Fa
 
 
 def get_editable_claim(db: Session, user: User, claim_id: int) -> Claim:
-    """The caller's own DRAFT claim, row-locked for the rest of the transaction."""
+    """The caller's own editable claim, row-locked for the rest of the transaction."""
     claim = get_visible_claim(db, user, claim_id, lock=True)
     if claim.employee_id != user.id:
         raise NotClaimOwner()
-    if claim.status != ClaimStatus.DRAFT:
-        raise ClaimNotEditable()
+    if claim.status not in EDITABLE_STATUSES:
+        raise ClaimNotEditable(details={"status": claim.status})
     return claim
 
 
@@ -129,6 +135,20 @@ def list_claims(
 def claim_history(db: Session, user: User, claim_id: int) -> list[AuditEvent]:
     get_visible_claim(db, user, claim_id)
     return audit.history(db, entity_type=ENTITY_TYPE, entity_id=claim_id)
+
+
+def policy_results(db: Session, user: User, claim_id: int) -> tuple[Claim, list[ClaimPolicyResult]]:
+    """Results of the latest policy run (empty before the first submit)."""
+    claim = get_visible_claim(db, user, claim_id)
+    rows = db.scalars(
+        select(ClaimPolicyResult)
+        .where(
+            ClaimPolicyResult.claim_id == claim.id,
+            ClaimPolicyResult.round == claim.submission_round,
+        )
+        .order_by(ClaimPolicyResult.line_position.is_(None), ClaimPolicyResult.line_position)
+    )
+    return claim, list(rows)
 
 
 # --- writes ------------------------------------------------------------------
@@ -185,6 +205,15 @@ def update_claim(db: Session, user: User, claim_id: int, body: ClaimWrite) -> Cl
     return claim
 
 
+def submit_claim(db: Session, user: User, claim_id: int) -> Claim:
+    """Submit (or resubmit after a send-back) the claim exactly as it is saved."""
+    claim = get_editable_claim(db, user, claim_id)
+    _submit(db, claim, user)
+    db.commit()
+    db.refresh(claim)
+    return claim
+
+
 # --- internals ---------------------------------------------------------------
 
 
@@ -235,10 +264,12 @@ def _check_receipts_belong_to_claim(db: Session, claim: Claim, body: ClaimWrite)
 
 
 def _submit(db: Session, claim: Claim, user: User) -> None:
-    errors = _submission_errors(claim)
+    errors = _submission_errors(db, claim)
     if errors:
         raise ClaimInvalid(errors, "The claim cannot be submitted until these fields are fixed.")
 
+    previous = claim.status
+    claim.submission_round += 1
     claim.status = ClaimStatus.SUBMITTED.value
     claim.submitted_at = datetime.now(UTC)
     claim.updated_by = user.id
@@ -246,18 +277,108 @@ def _submit(db: Session, claim: Claim, user: User) -> None:
         db,
         entity_type=ENTITY_TYPE,
         entity_id=claim.id,
-        action=AuditAction.SUBMITTED,
+        action=(
+            AuditAction.RESUBMITTED
+            if previous == ClaimStatus.CLARIFICATION_REQUESTED
+            else AuditAction.SUBMITTED
+        ),
         changes={
-            "status": {"old": ClaimStatus.DRAFT.value, "new": ClaimStatus.SUBMITTED.value},
+            "status": {"old": previous, "new": ClaimStatus.SUBMITTED.value},
             "submitted_at": {"old": None, "new": audit.json_safe(claim.submitted_at)},
+            "submission_round": {"old": claim.submission_round - 1, "new": claim.submission_round},
+        },
+        actor_id=user.id,
+    )
+    db.flush()
+    _apply_policy(db, claim, user)
+
+
+def _apply_policy(db: Session, claim: Claim, user: User) -> None:
+    """Run the policy engine, store per-line results, and move the claim on."""
+    evaluation = engine.evaluate(db, claim)
+    evaluated_at = datetime.now(UTC)
+    findings = [*evaluation.lines, evaluation.claim_level]
+
+    for finding in findings:
+        if finding.line_position is None and not finding.rule_codes:
+            continue  # no claim-level findings: no row
+        db.add(
+            ClaimPolicyResult(
+                claim_id=claim.id,
+                round=claim.submission_round,
+                line_position=finding.line_position,
+                outcome=finding.outcome.value,
+                rule_codes=finding.rule_codes,
+                reasons=finding.reasons,
+                rule_snapshot=finding.rule_snapshot,
+                evaluated_at=evaluated_at,
+            )
+        )
+
+    next_status = {
+        PolicyOutcome.AUTO_APPROVE: ClaimStatus.AUTO_APPROVED,
+        PolicyOutcome.AUTO_REJECT: ClaimStatus.AUTO_REJECTED,
+        PolicyOutcome.ROUTE_FOR_APPROVAL: ClaimStatus.PENDING_APPROVAL,
+    }[evaluation.outcome]
+    claim.policy_outcome = evaluation.outcome.value
+    claim.policy_evaluated_at = evaluated_at
+    claim.status = next_status.value
+
+    audit.record(
+        db,
+        entity_type=ENTITY_TYPE,
+        entity_id=claim.id,
+        action=AuditAction.POLICY_EVALUATED,
+        changes={
+            "status": {"old": ClaimStatus.SUBMITTED.value, "new": next_status.value},
+            "policy_outcome": {"old": None, "new": evaluation.outcome.value},
+            "findings": {
+                "old": None,
+                "new": [
+                    {
+                        "line": f.line_position,
+                        "outcome": f.outcome.value,
+                        "rule_codes": f.rule_codes,
+                        "reasons": f.reasons,
+                    }
+                    for f in findings
+                    if f.rule_codes
+                ],
+            },
         },
         actor_id=user.id,
     )
 
+    if next_status == ClaimStatus.PENDING_APPROVAL:
+        steps = chain.build_chain(db, claim, engine.load_config(db))
+        db.flush()
+        audit.record(
+            db,
+            entity_type=ENTITY_TYPE,
+            entity_id=claim.id,
+            action=AuditAction.CHAIN_BUILT,
+            changes={
+                "approval_steps": {
+                    "old": None,
+                    "new": [
+                        {
+                            "step": step.step_order,
+                            "role": step.approver_role,
+                            "assigned_approver_id": step.assigned_approver_id,
+                        }
+                        for step in steps
+                    ],
+                }
+            },
+            actor_id=user.id,
+        )
 
-def _submission_errors(claim: Claim) -> list[dict[str, str]]:
-    """Full validation, run only on submit. Lists every problem, not just the first."""
+
+def _submission_errors(db: Session, claim: Claim) -> list[dict[str, str]]:
+    """Full validation, run only on submit. Lists every problem, not just the first.
+    The receipt threshold comes from the active RECEIPT_REQUIRED policy rule."""
     errors: list[dict[str, str]] = []
+    receipt_above = engine.receipt_required_above(db)
 
     def missing(field: str, message: str = "is required to submit") -> None:
         errors.append({"field": field, "message": message})
@@ -274,12 +395,12 @@ def _submission_errors(claim: Claim) -> list[dict[str, str]]:
             for field in ("city", "nights"):
                 if getattr(line, field) is None:
                     missing(f"{prefix}.{field}", "is required for a hotel line")
-        if line.amount is not None and line.amount > RECEIPT_REQUIRED_ABOVE:
+        if receipt_above is not None and line.amount is not None and line.amount > receipt_above:
             for field in ("receipt_number", "receipt_id"):
                 if getattr(line, field) is None:
                     missing(
                         f"{prefix}.{field}",
-                        f"is required when the amount is above {RECEIPT_REQUIRED_ABOVE} INR",
+                        f"is required when the amount is above {receipt_above} INR",
                     )
     return errors
 

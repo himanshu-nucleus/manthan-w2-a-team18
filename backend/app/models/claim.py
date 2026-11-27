@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Any, ClassVar
 
 from sqlalchemy import (
     BigInteger,
@@ -23,10 +24,26 @@ from app.database import Base
 
 
 class ClaimStatus(StrEnum):
-    """Claim lifecycle. Approval states are added with the approval chain."""
+    """Claim lifecycle.
+
+    DRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL
+    PENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED
+    CLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED
+    SUBMITTED is transient: the policy engine runs in the same transaction.
+    """
 
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
+    AUTO_APPROVED = "AUTO_APPROVED"
+    AUTO_REJECTED = "AUTO_REJECTED"
+    PENDING_APPROVAL = "PENDING_APPROVAL"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    CLARIFICATION_REQUESTED = "CLARIFICATION_REQUESTED"
+
+
+# The owner may change a claim only in these states.
+EDITABLE_STATUSES = frozenset({ClaimStatus.DRAFT, ClaimStatus.CLARIFICATION_REQUESTED})
 
 
 class ExpenseCategory(StrEnum):
@@ -62,6 +79,14 @@ class Claim(Base):
         Numeric(12, 2), nullable=False, default=Decimal("0.00")
     )
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Outcome of the latest policy run and how many times the claim has been submitted.
+    policy_outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    policy_evaluated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    submission_round: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Optimistic lock: every UPDATE checks and bumps it, so concurrent writes fail.
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -84,6 +109,8 @@ class Claim(Base):
         back_populates="claim",
         order_by="ClaimAttachment.id",
     )
+
+    __mapper_args__: ClassVar[dict[str, Any]] = {"version_id_col": version}
 
 
 class ClaimLine(Base):

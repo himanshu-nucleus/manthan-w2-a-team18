@@ -1,4 +1,4 @@
-"""Expense claims: create, update, read, receipts and the audit trail.
+"""Expense claims: create, update, submit, read, receipts, policy results and audit trail.
 
 Every endpoint needs a logged-in user. Rules live in ``app.services.claims``.
 """
@@ -13,6 +13,8 @@ from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.models import AuditEvent, Claim, ClaimAttachment, ClaimStatus, User
 from app.schemas.claim import AttachmentOut, AuditEventOut, ClaimOut, ClaimPage, ClaimWrite
+from app.schemas.errors import error_responses
+from app.schemas.policy import PolicyFindingOut, PolicyResultsOut
 from app.services import attachments, claims
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -22,7 +24,8 @@ router = APIRouter(prefix="/claims", tags=["claims"])
     "",
     response_model=ClaimOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a claim as a draft, or create and submit it",
+    summary="Create a claim as a draft, or create and submit it (any logged-in user)",
+    responses=error_responses(401, 409, 422, 503),
 )
 def create_claim(
     body: ClaimWrite,
@@ -35,7 +38,8 @@ def create_claim(
 @router.put(
     "/{claim_id}",
     response_model=ClaimOut,
-    summary="Replace a draft claim's content; save it again as a draft or submit it",
+    summary="Replace an editable claim's content; save as draft or submit (owner only)",
+    responses=error_responses(401, 403, 404, 409, 422, 503),
 )
 def update_claim(
     claim_id: int,
@@ -46,7 +50,27 @@ def update_claim(
     return claims.update_claim(db, user, claim_id, body)
 
 
-@router.get("", response_model=ClaimPage, summary="List claims (employees see only their own)")
+@router.post(
+    "/{claim_id}/submit",
+    response_model=ClaimOut,
+    summary="Submit or resubmit a claim: runs the policy engine and starts the approval chain "
+    "(owner only)",
+    responses=error_responses(401, 403, 404, 409, 422, 503),
+)
+def submit_claim(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Claim:
+    return claims.submit_claim(db, user, claim_id)
+
+
+@router.get(
+    "",
+    response_model=ClaimPage,
+    summary="List claims (employees see only their own)",
+    responses=error_responses(401, 422),
+)
 def list_claims(
     status_filter: ClaimStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=20, ge=1, le=100),
@@ -63,7 +87,12 @@ def list_claims(
     )
 
 
-@router.get("/{claim_id}", response_model=ClaimOut, summary="One claim with its lines")
+@router.get(
+    "/{claim_id}",
+    response_model=ClaimOut,
+    summary="One claim with its lines",
+    responses=error_responses(401, 404, 422),
+)
 def get_claim(
     claim_id: int,
     db: Session = Depends(get_db),
@@ -73,9 +102,33 @@ def get_claim(
 
 
 @router.get(
+    "/{claim_id}/policy-results",
+    response_model=PolicyResultsOut,
+    summary="Outcome and reasons of the latest policy run, per line and for the whole claim",
+    responses=error_responses(401, 404, 422),
+)
+def get_policy_results(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> PolicyResultsOut:
+    claim, rows = claims.policy_results(db, user, claim_id)
+    findings = [PolicyFindingOut.model_validate(row) for row in rows]
+    return PolicyResultsOut(
+        claim_id=claim.id,
+        round=claim.submission_round,
+        outcome=claim.policy_outcome,
+        evaluated_at=claim.policy_evaluated_at,
+        lines=[f for f in findings if f.line_position is not None],
+        claim_level=[f for f in findings if f.line_position is None],
+    )
+
+
+@router.get(
     "/{claim_id}/audit",
     response_model=list[AuditEventOut],
     summary="The claim's change history, newest first",
+    responses=error_responses(401, 404, 422),
 )
 def get_claim_audit(
     claim_id: int,
@@ -89,7 +142,8 @@ def get_claim_audit(
     "/{claim_id}/attachments",
     response_model=AttachmentOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Upload a receipt (PDF, PNG or JPEG) to a draft claim",
+    summary="Upload a receipt (PDF, PNG or JPEG) to an editable claim (owner only)",
+    responses=error_responses(401, 403, 404, 409, 413, 415, 422),
 )
 def upload_attachment(
     claim_id: int,
@@ -111,6 +165,7 @@ def upload_attachment(
     "/{claim_id}/attachments/{attachment_id}",
     response_class=FileResponse,
     summary="Download a receipt file",
+    responses=error_responses(401, 404, 422),
 )
 def download_attachment(
     claim_id: int,

@@ -37,7 +37,7 @@ A claim is saved as `DRAFT` (any fields may be blank), receipts are uploaded to 
 4. **Submit:** `PUT /claims/{id}` with `"action": "submit"`. Full validation runs; on success the status is `SUBMITTED`.
 5. **After submit:** the claim can be read and audited, but any `PUT` returns `409 claim_not_editable`.
 
-A claim with no receipts can skip steps 2 and 3 and be created and submitted in one call: `POST /claims` with `"action": "submit"`. Approval states (manager, auditor, finance head) arrive with the approval-chain work.
+A claim with no receipts can skip steps 2 and 3 and be created and submitted in one call: `POST /claims` with `"action": "submit"`. Submitting now runs the policy engine and approval chain, and a sent-back claim can be edited again: see [policy-approvals-api.md](policy-approvals-api.md).
 
 ## Who can do what
 
