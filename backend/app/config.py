@@ -33,6 +33,11 @@ class Settings(BaseSettings):
 
     api_prefix: str = "/api/v1"
 
+    # Signs login tokens. The default is for local development only; set a
+    # random SECRET_KEY in .env anywhere the app is shared.
+    secret_key: str = "dev-only-insecure-secret-key-change-me"
+    access_token_ttl_seconds: int = 8 * 60 * 60
+
     @property
     def is_local(self) -> bool:
         return self.environment.lower() in {"local", "dev", "development"}

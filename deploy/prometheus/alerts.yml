@@ -1,0 +1,38 @@
+# Starter alerts on the metrics the API already exposes.
+# The "oldest pending approval" alert is added once the API exports
+# oldest_pending_approval_age_seconds (owner: Backend-2 / SRE).
+
+groups:
+  - name: expenseflow-api
+    rules:
+      - alert: ApiDown
+        expr: up{job="expenseflow-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: ExpenseFlow API is not being scraped
+          description: Prometheus has not reached api:8000/metrics for 1 minute.
+
+      - alert: ApiHighLatencyP95
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="expenseflow-api"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency above 500 ms
+          description: p95 request latency has been above 500 ms for 5 minutes.
+
+      - alert: ApiHighErrorRate
+        expr: >
+          sum(rate(http_requests_total{job="expenseflow-api",status=~"5.."}[5m]))
+          / clamp_min(sum(rate(http_requests_total{job="expenseflow-api"}[5m])), 1e-9) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: API 5xx rate above 5%
+          description: More than 5% of API requests returned 5xx over 5 minutes.

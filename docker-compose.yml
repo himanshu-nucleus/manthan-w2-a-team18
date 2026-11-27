@@ -1,0 +1,83 @@
+# Whole ExpenseFlow stack from a fresh clone: `docker compose up --build`
+#
+#   api         http://localhost:8000/docs
+#   prometheus  http://localhost:9090
+#   grafana     http://localhost:3000
+#   postgres    localhost:5433 (host port; 5432 inside the compose network)
+#
+# The web service is added here once frontend/ exists.
+
+services:
+  db:
+    image: postgres:18
+    container_name: manthan-db
+    environment:
+      POSTGRES_USER: manthan
+      POSTGRES_PASSWORD: manthan
+      POSTGRES_DB: manthan
+    ports:
+      # Host 5433 on purpose: team laptops may already run PostgreSQL on 5432.
+      - "5433:5432"
+    volumes:
+      # postgres:18 declares its VOLUME at /var/lib/postgresql; mount the parent,
+      # not the pre-18 /var/lib/postgresql/data path, or data silently won't persist.
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manthan -d manthan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: manthan-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Inside the compose network the database is `db` on its internal port 5432.
+      DATABASE_URL: postgresql+psycopg://manthan:manthan@db:5432/manthan
+      APP_NAME: ExpenseFlow API
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      # Dev convenience: source is mounted so --reload picks up edits.
+      - ./backend/app:/app/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: manthan-prometheus
+    depends_on:
+      - api
+    volumes:
+      - ./deploy/prometheus:/etc/prometheus:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: manthan-grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  db_data:

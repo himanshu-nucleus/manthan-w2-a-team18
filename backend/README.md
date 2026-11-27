@@ -28,7 +28,7 @@ Then:
 | http://localhost:8000/metrics | Prometheus metrics |
 | http://localhost:8000/api/v1 | Versioned API root (no routes yet) |
 
-Whole stack in containers: `docker compose up --build`.
+Whole stack in containers: `docker compose up --build` from the repository root.
 
 ## Layout
 

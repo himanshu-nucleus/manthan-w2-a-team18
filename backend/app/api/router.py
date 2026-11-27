@@ -20,6 +20,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.api import auth, users
+
 api_router = APIRouter()
 
-# Feature routers are included below as they are built.
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
