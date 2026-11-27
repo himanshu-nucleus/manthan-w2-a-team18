@@ -1,7 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { PageHeader } from '@/components/app-shell'
+import { ApprovalsQueue } from '@/features/approvals/components/approvals-queue'
 
-// Placeholder - replaced by the M2/A1 screen.
 export const Route = createFileRoute('/_authed/approvals')({
-  component: () => <PageHeader title="Approvals" description="Coming soon." />,
+  head: () => ({ meta: [{ title: 'Approvals · ExpenseFlow' }] }),
+  component: ApprovalsPage,
 })
+
+function ApprovalsPage() {
+  const { user } = Route.useRouteContext()
+  const title = user.role === 'finance_auditor' ? 'Audit queue' : 'Approvals'
+  return (
+    <>
+      <PageHeader
+        title={title}
+        description="Claims waiting on you, oldest first. Filter, review, or approve in bulk."
+      />
+      <ApprovalsQueue title={title} />
+    </>
+  )
+}
