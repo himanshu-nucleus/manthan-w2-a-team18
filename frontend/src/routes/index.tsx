@@ -1,11 +1,16 @@
 import { RocketLaunchIcon } from '@phosphor-icons/react'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 
+export const Route = createFileRoute('/')({
+  component: HomePage,
+})
+
 const counterSchema = z.number().int().min(0).max(10)
 
-function App() {
+function HomePage() {
   const [count, setCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,10 +25,10 @@ function App() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
+    <main className="flex flex-col items-center justify-center gap-4 p-6 pt-24">
       <h1 className="text-3xl font-semibold tracking-tight">manthan-w2-a-team18</h1>
       <p className="text-muted-foreground">
-        React + Vite + Tailwind + shadcn (Base UI) + TanStack Query + Zod
+        React + Vite + Tailwind + shadcn (Base UI) + TanStack Router &amp; Query + Zod + MSW
       </p>
       <Button onClick={increment}>
         <RocketLaunchIcon weight="bold" />
@@ -37,5 +42,3 @@ function App() {
     </main>
   )
 }
-
-export default App

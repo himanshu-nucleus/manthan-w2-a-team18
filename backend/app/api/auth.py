@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.errors import AppError
 from app.models import User
+from app.schemas.errors import error_responses
 from app.schemas.user import LoginRequest, LoginResponse, UserOut
 from app.security import create_access_token, verify_password
 
@@ -23,8 +24,15 @@ class InvalidCredentials(AppError):
     message = "The username or password is incorrect."
 
 
-@router.post("/login", response_model=LoginResponse, summary="Log in with username and password")
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    summary="Log in with username + password; returns a bearer token (public)",
+    responses=error_responses(401, 422),
+)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
+    """Send the returned `access_token` as `Authorization: Bearer <token>` on every other
+    call. Unknown user, wrong password and inactive user all return the same 401."""
     user = db.scalar(select(User).where(User.username == body.username.lower()))
     # Same error for unknown user, wrong password and inactive user: no account probing.
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
@@ -36,6 +44,12 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     )
 
 
-@router.get("/me", response_model=UserOut, summary="The logged-in user")
+@router.get(
+    "/me",
+    response_model=UserOut,
+    summary="Get the logged-in user and role (any logged-in user)",
+    responses=error_responses(401),
+)
 def me(user: User = Depends(get_current_user)) -> User:
+    """Call on page load to restore the session and pick the role's landing page."""
     return user
