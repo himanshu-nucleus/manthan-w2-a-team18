@@ -1,8 +1,14 @@
-# CI: lint + format check + tests + dependency vulnerability check.
+# CI: lint + format check + tests + startup check + dependency vulnerability check.
 # GitHub only runs workflows from the repository-root .github/workflows/ folder.
 #
-# No postgres service container on purpose: the test harness uses in-memory
-# SQLite, so the suite must pass with no database available.
+# Two test jobs:
+#   api      - unit + API tests on in-memory SQLite (no database needed).
+#   startup  - the api container's startup steps on PostgreSQL 18 (as scripts/start.py
+#              runs them): Alembic migrations, then backend/db/seed.sql; the integration
+#              tests start the app (policy defaults), log in as every seeded persona and
+#              run claim -> payout -> CSV.
+# Each job writes its test plan (flows, cases, pass/fail) to the run's Summary page and
+# uploads the JUnit report as an artifact.
 
 name: ci
 
@@ -12,7 +18,7 @@ on:
 
 jobs:
   api:
-    name: API - lint, test, dependency check
+    name: API - lint, unit tests, dependency check
     runs-on: ubuntu-latest
 
     defaults:
@@ -41,14 +47,92 @@ jobs:
       - name: Black
         run: black --check .
 
-      - name: Pytest
-        run: pytest -q --cov=app --cov-report=term-missing
+      - name: Unit and API tests
+        run: >
+          pytest -m "not integration" --junitxml=reports/unit.xml
+          --cov=app --cov-report=term-missing
+
+      - name: Test plan - unit and API
+        if: always()
+        run: python -m scripts.test_plan reports/unit.xml --title "Unit and API test plan" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: backend/reports/unit.xml
+          if-no-files-found: ignore
 
       # CI-only tool, installed here rather than added to the app lock file.
       - name: Dependency vulnerability check
         run: |
           python -m pip install pip-audit
           pip-audit -r requirements.txt
+
+  startup:
+    name: Startup - migrate, seed, integration tests (PostgreSQL)
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: manthan
+          POSTGRES_PASSWORD: manthan
+          POSTGRES_DB: manthan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manthan -d manthan"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://manthan:manthan@localhost:5432/manthan
+      RUN_INTEGRATION: "1"
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Migrate schema (Alembic)
+        run: python -m alembic upgrade head
+
+      - name: Load seed data (db/seed.sql)
+        run: python -m scripts.seed_db
+
+      - name: Start app and run integration tests
+        run: pytest -m integration --junitxml=reports/startup.xml -rA
+
+      - name: Test plan - startup and seed
+        if: always()
+        run: python -m scripts.test_plan reports/startup.xml --title "Startup and seed test plan" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload startup test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: startup-test-report
+          path: backend/reports/startup.xml
+          if-no-files-found: ignore
 
   web:
     name: Web - lint, format, test, build, dependency check
