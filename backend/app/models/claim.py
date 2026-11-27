@@ -7,6 +7,7 @@ from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     Date,
@@ -17,21 +18,28 @@ from sqlalchemy import (
     String,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 
 class ClaimStatus(StrEnum):
-    """Claim lifecycle. Approval states are added with the approval chain."""
+    """Claim lifecycle. Approval states are added with the approval chain.
+
+    DUPLICATE: on submit, a line matched another claim's line on vendor, amount and
+    receipt number.
+    """
 
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
+    DUPLICATE = "DUPLICATE"
 
 
 class ExpenseCategory(StrEnum):
     MEAL = "meal"
     HOTEL = "hotel"
+    LOCAL = "local"  # local conveyance; one line is one trip
     CAB = "cab"
     AIRFARE = "airfare"
     OTHER = "other"
@@ -114,6 +122,10 @@ class ClaimLine(Base):
     receipt_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     receipt_id: Mapped[int | None] = mapped_column(
         ForeignKey("claim_attachments.id", ondelete="RESTRICT"), nullable=True
+    )
+    # Reasons this line breaks a policy limit, set on submit. Empty = within policy.
+    policy_flags: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=False, default=list
     )
 
     claim: Mapped[Claim] = relationship(back_populates="lines")

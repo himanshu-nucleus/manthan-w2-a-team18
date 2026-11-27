@@ -1,13 +1,25 @@
-"""Claim rules: ownership, draft vs submit, validation and the audit trail.
+"""Claim rules: ownership, draft vs submit, validation, policy and the audit trail.
 
 Access rule: an employee sees only their own claims; every other role sees all
 claims. Only the owner may change a claim, and only while it is a DRAFT.
 A claim the caller may not see is reported as not found, so ids cannot be probed.
+
+Policy (limits read from ``policy_settings`` on every submit):
+- Receipt: when the claim total AND a line's amount are both above
+  ``receipt_required_above``, that line needs a receipt number and an uploaded
+  receipt. Missing either refuses the submit (422).
+- Limits: meal per employee per day (summed across their non-draft claims), hotel
+  per night by city tier x nights, local conveyance per trip. A breach does not
+  block the submit; the line gets a reason in ``policy_flags``.
+- Duplicate: a line whose vendor, amount and receipt number match a line on any
+  other claim (any employee; drafts and duplicates excluded) turns the claim
+  DUPLICATE, not SUBMITTED.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from collections import defaultdict
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -24,17 +36,19 @@ from app.models import (
     ClaimLine,
     ClaimStatus,
     ExpenseCategory,
+    PolicySettings,
     Role,
     User,
 )
 from app.schemas.claim import ClaimWrite
-from app.services import audit
+from app.services import audit, policy
 
 ENTITY_TYPE = "claim"
 
-# A receipt number and an uploaded receipt are mandatory above this amount (INR).
-RECEIPT_REQUIRED_ABOVE = Decimal("500")
 CENTS = Decimal("0.01")
+
+# Claims that do not count towards the meal daily limit or as a duplicate's original.
+NOT_COUNTED_STATUSES = (ClaimStatus.DRAFT.value, ClaimStatus.DUPLICATE.value)
 
 LINE_FIELDS = (
     "category",
@@ -235,27 +249,125 @@ def _check_receipts_belong_to_claim(db: Session, claim: Claim, body: ClaimWrite)
 
 
 def _submit(db: Session, claim: Claim, user: User) -> None:
-    errors = _submission_errors(claim)
+    rules = policy.get_policy(db)
+    errors = _submission_errors(claim, rules.receipt_required_above)
     if errors:
         raise ClaimInvalid(errors, "The claim cannot be submitted until these fields are fixed.")
 
-    claim.status = ClaimStatus.SUBMITTED.value
+    _flag_policy_breaches(db, claim, rules)
+    duplicate_of = _find_duplicate(db, claim)
+    new_status = ClaimStatus.DUPLICATE if duplicate_of else ClaimStatus.SUBMITTED
+
+    claim.status = new_status.value
     claim.submitted_at = datetime.now(UTC)
     claim.updated_by = user.id
+
+    changes: dict[str, Any] = {
+        "status": {"old": ClaimStatus.DRAFT.value, "new": new_status.value},
+        "submitted_at": {"old": None, "new": audit.json_safe(claim.submitted_at)},
+    }
+    for index, line in enumerate(claim.lines):
+        if line.policy_flags:
+            changes[f"lines.{index}.policy_flags"] = {"old": [], "new": list(line.policy_flags)}
+    if duplicate_of:
+        changes["duplicate_of"] = {"old": None, "new": duplicate_of}
     audit.record(
         db,
         entity_type=ENTITY_TYPE,
         entity_id=claim.id,
         action=AuditAction.SUBMITTED,
-        changes={
-            "status": {"old": ClaimStatus.DRAFT.value, "new": ClaimStatus.SUBMITTED.value},
-            "submitted_at": {"old": None, "new": audit.json_safe(claim.submitted_at)},
-        },
+        changes=changes,
         actor_id=user.id,
     )
 
 
-def _submission_errors(claim: Claim) -> list[dict[str, str]]:
+def _flag_policy_breaches(db: Session, claim: Claim, rules: PolicySettings) -> None:
+    """Set ``policy_flags`` on every line; breaches are recorded, not refused."""
+    flags: dict[int, list[str]] = {index: [] for index in range(len(claim.lines))}
+
+    meal_lines: dict[date, list[int]] = defaultdict(list)
+    for index, line in enumerate(claim.lines):
+        if line.category == ExpenseCategory.MEAL:
+            meal_lines[line.expense_date].append(index)
+        elif line.category == ExpenseCategory.HOTEL:
+            tier1 = policy.is_tier1_city(rules, line.city)
+            per_night = (
+                rules.hotel_tier1_nightly_limit if tier1 else rules.hotel_other_nightly_limit
+            )
+            allowed = _money(per_night * line.nights)
+            if line.amount > allowed:
+                tier = "tier-1 city" if tier1 else "non-tier-1 city"
+                flags[index].append(
+                    f"hotel: {line.amount} for {line.nights} night(s) in {line.city} exceeds "
+                    f"{allowed} INR ({_money(per_night)} per night, {tier})"
+                )
+        elif line.category == ExpenseCategory.LOCAL and line.amount > rules.local_trip_limit:
+            flags[index].append(
+                f"local: {line.amount} exceeds the per-trip limit of "
+                f"{_money(rules.local_trip_limit)} INR"
+            )
+
+    for expense_date, indexes in meal_lines.items():
+        day_total = _money(
+            sum((claim.lines[i].amount for i in indexes), Decimal("0"))
+            + _other_meal_spend(db, claim, expense_date)
+        )
+        if day_total > rules.meal_daily_limit:
+            for index in indexes:
+                flags[index].append(
+                    f"meal: {day_total} spent on {expense_date.isoformat()} exceeds the daily "
+                    f"limit of {_money(rules.meal_daily_limit)} INR"
+                )
+
+    for index, line in enumerate(claim.lines):
+        line.policy_flags = flags[index]
+
+
+def _other_meal_spend(db: Session, claim: Claim, expense_date: date) -> Decimal:
+    """The employee's meal spend on ``expense_date`` in their other counted claims."""
+    total = db.scalar(
+        select(func.coalesce(func.sum(ClaimLine.amount), 0))
+        .join(Claim, ClaimLine.claim_id == Claim.id)
+        .where(
+            Claim.employee_id == claim.employee_id,
+            Claim.id != claim.id,
+            Claim.status.not_in(NOT_COUNTED_STATUSES),
+            ClaimLine.category == ExpenseCategory.MEAL.value,
+            ClaimLine.expense_date == expense_date,
+        )
+    )
+    return Decimal(total or 0)
+
+
+def _find_duplicate(db: Session, claim: Claim) -> dict[str, Any] | None:
+    """A line on another employee's or the same employee's counted claim with the same
+    vendor, amount and receipt number (vendor and receipt number compared ignoring case)."""
+    for index, line in enumerate(claim.lines):
+        if line.receipt_number is None:
+            continue
+        match = db.execute(
+            select(ClaimLine.claim_id, ClaimLine.position)
+            .join(Claim, ClaimLine.claim_id == Claim.id)
+            .where(
+                Claim.id != claim.id,
+                Claim.status.not_in(NOT_COUNTED_STATUSES),
+                func.lower(ClaimLine.vendor) == line.vendor.lower(),
+                ClaimLine.amount == line.amount,
+                func.lower(ClaimLine.receipt_number) == line.receipt_number.lower(),
+            )
+            .order_by(ClaimLine.claim_id, ClaimLine.position)
+            .limit(1)
+        ).first()
+        if match is not None:
+            return {
+                "line": index,
+                "claim_id": match.claim_id,
+                "claim_line_position": match.position,
+            }
+    return None
+
+
+def _submission_errors(claim: Claim, receipt_required_above: Decimal) -> list[dict[str, str]]:
     """Full validation, run only on submit. Lists every problem, not just the first."""
     errors: list[dict[str, str]] = []
 
@@ -274,12 +386,17 @@ def _submission_errors(claim: Claim) -> list[dict[str, str]]:
             for field in ("city", "nights"):
                 if getattr(line, field) is None:
                     missing(f"{prefix}.{field}", "is required for a hotel line")
-        if line.amount is not None and line.amount > RECEIPT_REQUIRED_ABOVE:
+        if (
+            claim.total_amount > receipt_required_above
+            and line.amount is not None
+            and line.amount > receipt_required_above
+        ):
             for field in ("receipt_number", "receipt_id"):
                 if getattr(line, field) is None:
                     missing(
                         f"{prefix}.{field}",
-                        f"is required when the amount is above {RECEIPT_REQUIRED_ABOVE} INR",
+                        "is required when the claim total and the line amount are above "
+                        f"{_money(receipt_required_above)} INR",
                     )
     return errors
 

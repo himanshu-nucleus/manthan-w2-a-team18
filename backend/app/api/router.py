@@ -20,10 +20,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import auth, claims, users
+from app.api import auth, claims, policy, users
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(claims.router)
+api_router.include_router(policy.router)

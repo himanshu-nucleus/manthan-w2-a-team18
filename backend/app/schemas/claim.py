@@ -81,6 +81,9 @@ class ClaimLineOut(BaseModel):
     nights: int | None
     receipt_number: str | None
     receipt_id: int | None
+    policy_flags: list[str] = Field(
+        description="Why this line breaks a policy limit, set on submit. Empty = within policy."
+    )
 
 
 class AttachmentOut(BaseModel):

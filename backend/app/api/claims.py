@@ -13,6 +13,7 @@ from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.models import AuditEvent, Claim, ClaimAttachment, ClaimStatus, User
 from app.schemas.claim import AttachmentOut, AuditEventOut, ClaimOut, ClaimPage, ClaimWrite
+from app.schemas.errors import error_responses
 from app.services import attachments, claims
 
 router = APIRouter(prefix="/claims", tags=["claims"])
@@ -22,7 +23,8 @@ router = APIRouter(prefix="/claims", tags=["claims"])
     "",
     response_model=ClaimOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a claim as a draft, or create and submit it",
+    summary="Create a claim as a draft, or create and submit it (any logged-in user)",
+    responses=error_responses(401, 422),
 )
 def create_claim(
     body: ClaimWrite,
@@ -35,7 +37,8 @@ def create_claim(
 @router.put(
     "/{claim_id}",
     response_model=ClaimOut,
-    summary="Replace a draft claim's content; save it again as a draft or submit it",
+    summary="Replace a draft claim's content; save it again as a draft or submit it (owner only)",
+    responses=error_responses(401, 403, 404, 409, 422),
 )
 def update_claim(
     claim_id: int,
