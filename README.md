@@ -32,4 +32,5 @@ CI (`.github/workflows/ci.yml`) runs lint, tests and a `pip-audit` dependency ch
 ## Layout
 
 See `CLAUDE.md` for the repository layout, team ownership and rules; `docs/work-plan.md`
+(kept locally by the lead, not in the repo)
 for the plan, gaps, risks and checkpoints.

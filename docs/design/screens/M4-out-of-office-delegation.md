@@ -8,7 +8,7 @@
 | Route (suggested) | `/manager/out-of-office` (sheet opens over it) |
 | Figma node | 4015:3022 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Manager ("Out of office" selected, Approvals badge 7) |
+| Sidebar variant | Manager ("Out of office" selected, Approvals badge 7; below the divider only "Policy guide" - Notifications and Settings removed) |
 
 ## Purpose
 The manager sets an out-of-office period and picks a delegate who approves on their behalf, so

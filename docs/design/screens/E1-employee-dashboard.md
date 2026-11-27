@@ -24,7 +24,7 @@ Sidebar (260) + Main (1180, 32px side padding, content width 1116). Main, top to
 ## Content & components
 
 ### Sidebar (Employee)
-Items: Dashboard (active), My claims (badge 18), New claim; then Notifications (badge 3), Policy guide, Settings. Workspace switcher shows "Employee". Sidebar Promo Card: "Owed to you" · **₹38,130** · "2 claims approved or in approval · next payout 30 Nov" · button "Track my claims". User card: "Ananya Sharma" / "Log out of your account".
+Items: Dashboard (active), My claims (badge 18), New claim, followed by a divider (no further nav items). Workspace switcher shows "Employee". Sidebar Promo Card: "Owed to you" · **₹38,130** · "2 claims approved or in approval · next payout 30 Nov" · button "Track my claims". User card: "Ananya Sharma" / "Log out of your account".
 
 ### Greeting header
 - Small text: "Hi Ananya Sharma"
@@ -80,7 +80,7 @@ Claim IDs are purple links.
 
 ## Interactions & states
 - **New claim** (header and sidebar) → N1 (start new claim).
-- **Policy guide** button / sidebar item → policy guide page (not in this set).
+- **Policy guide** button → policy guide page (not in this set).
 - **Respond** → E5 for EXP-2026-0813. **Continue** → E3 (draft editor) for EXP-2026-0821. **View** → E5 for EXP-2026-0798.
 - KPI Cards — Behaviour (inferred): clicking navigates to E2 filtered by the matching tab (Drafts, Sent back, Paid…).
 - "This year" Select — Behaviour (inferred): changes the period for the KPIs (other options not shown).

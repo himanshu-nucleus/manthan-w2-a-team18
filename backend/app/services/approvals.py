@@ -135,6 +135,7 @@ def approve(
         following.status = StepStatus.PENDING.value
     else:
         claim.status = ClaimStatus.APPROVED.value
+        claim.approved_at = step.acted_at
         audit.record(
             db,
             entity_type=claims.ENTITY_TYPE,

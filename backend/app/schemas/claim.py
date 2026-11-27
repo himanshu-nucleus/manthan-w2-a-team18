@@ -10,7 +10,14 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from app.models.claim import ExpenseCategory
 
@@ -23,7 +30,12 @@ def _blank_to_none(value: Any) -> Any:
 
 
 def _text(max_length: int) -> Any:
-    return Annotated[str | None, BeforeValidator(_blank_to_none), Field(max_length=max_length)]
+    # The length limit must sit on ``str`` inside the union: applied to ``str | None`` as a
+    # whole, pydantic runs it against None (also what blanks become) and raises TypeError -> 500.
+    return Annotated[
+        Annotated[str, StringConstraints(max_length=max_length)] | None,
+        BeforeValidator(_blank_to_none),
+    ]
 
 
 Text100 = _text(100)
@@ -107,6 +119,9 @@ class ClaimSummary(BaseModel):
     total_amount: Decimal
     submitted_at: datetime | None
     policy_outcome: str | None
+    approved_at: datetime | None
+    paid_at: datetime | None
+    payout_batch_reference: str | None
     submission_round: int
     version: int
     created_at: datetime

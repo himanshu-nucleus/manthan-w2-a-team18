@@ -96,55 +96,30 @@ VALUES (
 ON CONFLICT (username) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- Policy rules (configuration, not code). Amounts are INR strings so they stay exact.
--- Re-running keeps any limit already changed through PUT /policy-rules/{code}.
--- Template placeholders are filled by the rule type; see app/policy/rules.py.
+-- Policy rules and settings: the defaults live in backend/app/policy/defaults.py and
+-- the API inserts any missing one at startup. These UPDATEs switch off the rules the
+-- team replaced (duplicate rule, local category) in databases seeded before that
+-- change; they run on every seed, so re-seeding switches them off again.
 -- ---------------------------------------------------------------------------
-INSERT INTO policy_rules (code, name, category, rule_type, params, outcome_on_breach, reason_template)
-VALUES
-    ('MEAL_DAILY_LIMIT', 'Meals up to 1,500 INR per day', 'meal', 'DAILY_CATEGORY_LIMIT',
-     '{"limit": "1500"}', 'ROUTE_FOR_APPROVAL',
-     'Meal spend {total} INR on {date} exceeds daily limit of {limit} INR'),
-    ('HOTEL_NIGHTLY_LIMIT_T1', 'Hotel up to 6,000 INR per night in tier-1 cities', 'hotel',
-     'PER_NIGHT_LIMIT', '{"limit": "6000", "city_tier": "tier1"}', 'ROUTE_FOR_APPROVAL',
-     'Hotel {per_night} INR per night in {city} exceeds tier-1 limit of {limit} INR'),
-    ('HOTEL_NIGHTLY_LIMIT_OTHER', 'Hotel up to 4,000 INR per night in other cities', 'hotel',
-     'PER_NIGHT_LIMIT', '{"limit": "4000", "city_tier": "other"}', 'ROUTE_FOR_APPROVAL',
-     'Hotel {per_night} INR per night in {city} exceeds limit of {limit} INR for non-tier-1 cities'),
-    ('CAB_TRIP_LIMIT', 'Local cab up to 2,000 INR per trip', 'cab', 'PER_LINE_LIMIT',
-     '{"limit": "2000"}', 'ROUTE_FOR_APPROVAL',
-     'Cab fare {amount} INR on {date} exceeds per-trip limit of {limit} INR'),
-    ('RECEIPT_MANDATORY', 'Receipt mandatory above 500 INR', NULL, 'RECEIPT_REQUIRED',
-     '{"above": "500"}', 'AUTO_REJECT',
-     'Receipt is mandatory above {above} INR; line {line} ({amount} INR) has none'),
-    ('DUPLICATE_LINE', 'Same vendor, amount and date as an earlier line', NULL, 'DUPLICATE_LINE',
-     '{}', 'ROUTE_FOR_APPROVAL',
-     'Possible duplicate: same vendor, amount and date as {match}'),
-    ('DUPLICATE_RECEIPT_HASH', 'Same receipt file as an earlier receipt', NULL,
-     'DUPLICATE_RECEIPT_HASH', '{}', 'AUTO_REJECT',
-     'Duplicate receipt: the same file was already used on {match}'),
-    ('WEEKEND_SPEND', 'Weekend spend flagged for manager attention', NULL, 'WEEKEND',
-     '{"days": [5, 6]}', 'ROUTE_FOR_APPROVAL',
-     'Expense on {weekday} {date} is weekend spend; flagged for manager attention'),
-    ('SPLIT_CLAIM', 'Possible claim splitting to stay under an approval threshold', NULL,
-     'SPLIT_CLAIM', '{"window_days": 7, "threshold": "25000"}', 'ROUTE_FOR_APPROVAL',
-     'Claims submitted in the last {window_days} days total {combined} INR, above {threshold} INR: possible claim splitting')
-ON CONFLICT (code) DO NOTHING;
+UPDATE policy_rules SET active = false
+WHERE code IN ('DUPLICATE_LINE', 'DUPLICATE_RECEIPT_HASH', 'CAB_TRIP_LIMIT');
 
 -- ---------------------------------------------------------------------------
--- Policy settings
+-- Departments for the demo users (printed on payout files). Only fills blanks.
 -- ---------------------------------------------------------------------------
-INSERT INTO policy_settings (key, value, description)
-VALUES
-    ('tier1_cities',
-     '["mumbai", "delhi", "new delhi", "bengaluru", "bangalore", "chennai", "hyderabad", "kolkata", "pune", "ahmedabad"]',
-     'Cities that get the tier-1 hotel limit (matched case-insensitively).'),
-    ('approval_thresholds',
-     '{"finance_auditor": "25000", "finance_head": "100000"}',
-     'Claim total (INR) strictly above which the auditor / finance head step is added.'),
-    ('auto_approve_max_total',
-     '"500"',
-     'A claim with no rule breach is auto-approved only if its total (INR) is at most this.')
-ON CONFLICT (key) DO NOTHING;
+UPDATE users SET department = CASE username
+        WHEN 'admin' THEN 'Finance'
+        WHEN 'head2' THEN 'Finance'
+        WHEN 'auditor' THEN 'Finance'
+        WHEN 'auditor1' THEN 'Finance'
+        WHEN 'manager' THEN 'Consulting'
+        WHEN 'employee' THEN 'Consulting'
+        WHEN 'manager1' THEN 'Engineering'
+        WHEN 'employee1' THEN 'Engineering'
+        WHEN 'employee2' THEN 'Engineering'
+    END
+WHERE department IS NULL
+  AND username IN ('admin', 'head2', 'auditor', 'auditor1', 'manager', 'employee',
+                   'manager1', 'employee1', 'employee2');
 
 COMMIT;

@@ -8,7 +8,7 @@
 | Route (suggested) | /admin/audit |
 | Figma node | 4018:4826 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Finance head (active item: Audit trail) |
+| Sidebar variant | Finance head (active item: Audit trail; nav is Dashboard / Approvals 2 / Payout batches / Policy rules / Approvals & people / Audit trail - no Spend analytics, no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 A read-only, append-only log of every action on claims (who did what, on whose behalf, and the status change),

@@ -23,6 +23,7 @@ class ErrorResponse(BaseModel):
 
 
 _DESCRIPTIONS = {
+    400: "The request is not valid (for example a date range in the future).",
     401: "Missing, invalid or expired token, or wrong credentials.",
     403: "Logged in, but the role is not allowed to do this.",
     404: "Not found.",

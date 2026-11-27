@@ -8,7 +8,7 @@
 | Route (suggested) | `/manager/approvals/:claimId` (sheet over M2) |
 | Figma node | 4015:2577 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Manager ("Approvals" selected, badge 7) |
+| Sidebar variant | Manager ("Approvals" selected, badge 7; below the divider only "Policy guide" - Notifications and Settings removed) |
 
 ## Purpose
 The manager reviews one claim line by line, sees policy results, receipts and the employee's

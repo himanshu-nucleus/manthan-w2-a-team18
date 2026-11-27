@@ -23,3 +23,10 @@ test-results/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Office lock files (created while a document is open)
+~$*
+
+# Lead's planning documents - local only, not shared through the repo
+docs/work-plan.md
+docs/team-work-plan.xlsx

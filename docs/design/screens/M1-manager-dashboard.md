@@ -7,18 +7,22 @@
 | Role | Line manager |
 | Route (suggested) | `/manager` |
 | Figma node | 4015:1806 |
-| Frame size | 1440 × 1233 |
+| Frame size | 1440 × 1090 |
 | Sidebar variant | Manager ("Team dashboard" selected; Approvals badge 7; promo card "Avg approval time 6 h") |
+
+Sidebar nav in the current design: Team dashboard, Approvals (7), Out of office, then a divider. The
+Notifications / Policy guide / Settings group below the divider was removed; notifications stay on the
+Topbar bell (badge 3).
 
 ## Purpose
 Landing page for a line manager. It shows how many claims wait for a decision, team spend and
-quick actions (approve the clean ones, review the oldest), plus recent team activity.
+the claims that need a decision (approve the clean ones, review the oldest), plus recent team activity.
 
 ## Layout
 - Sidebar (Manager) + Topbar (context dropdown "Engineering").
 - Greeting row (1116 × 90): greeting block left; two buttons right, bottom-aligned.
-- "Team overview" card (1116 × 387) with a purple gradient glow top right: header row, 5 KPI Cards
-  in a row, two AI hint lines, AI prompt bar.
+- "Team overview" card (1116 × 244) with a purple gradient glow top right: header row and 5 KPI Cards
+  in a row.
 - Two-column row (299px tall): "Needs your decision" card (656px) left, "Team spend by category"
   card (440px) right.
 - "Recent team activity" card (1116 × 253) with a table.
@@ -43,13 +47,6 @@ quick actions (approve the clean ones, review the oldest), plus recent team acti
 | ph/wallet | Team spend | ₹4.6 L | ↑ 12% vs October |
 | ph/warning | Lines over limit | 09 | Across 5 claims |
 | ph/clock | My avg approval | 6 h | Company target 24 h |
-
-- AI hints (ph/sparkle, purple):
-  - "3 clean claims can be approved together." + link "Approve all"
-  - "Rohit Kumar’s claim has waited 2 days and goes to the auditor after you." + link "Review now"
-- AI prompt bar (purple border, pill): placeholder "Ask ExpenseFlow AI anything…"; dashed suggestion
-  chips "Summarise my queue" (ph/list-checks) and "Who spends most on hotels?" (ph/bed); dark round
-  send button with ph/sparkle on the right.
 
 ### Needs your decision
 - Title "Needs your decision", count badge "3".
@@ -78,11 +75,10 @@ quick actions (approve the clean ones, review the oldest), plus recent team acti
 ## Interactions & states
 - "Open approvals" / Sidebar promo "Open approvals" / "All approvals" → M2.
 - "Set out of office" → M4.
-- "Review" on a row / "Review now" → M3 review sheet for that claim.
-- "Approve all" (hint link or row button) → Behaviour (inferred): confirm dialog, then approve the
+- "Review" on a row → M3 review sheet for that claim.
+- "Approve all" (row button) → Behaviour (inferred): confirm dialog, then approve the
   3 clean claims; or go to M2 with those 3 pre-selected.
 - Month Select changes the KPIs and chart. Kebab menu: options not designed.
-- AI prompt bar and suggestion chips → Behaviour (inferred): ask an assistant; no response UI is designed.
 - Chart bars: tooltip with amount on hover (inferred).
 - Empty state (inferred): when nothing waits, headline reads 0 claims and the "Needs your decision" list is empty.
 
@@ -94,10 +90,9 @@ quick actions (approve the clean ones, review the oldest), plus recent team acti
   lines over limit, manager avg approval time, spend by category).
 - Not yet in API: team activity feed (events across team claims); `GET /claims/{id}/audit` is per claim only.
 - Not yet in API: bulk approve.
-- Not yet in API: AI assistant - out of scope unless the team decides otherwise.
 
 ## Build notes
-- shadcn: Card, Button, Select, DropdownMenu, Badge, Table, Avatar, Input. Chart: shadcn Chart
+- shadcn: Card, Button, Select, DropdownMenu, Badge, Table, Avatar. Chart: shadcn Chart
   (Recharts BarChart) - check the dependency with the team before adding.
 - KPI Card and Status Chip are shared foundations; the "Needs your decision" row is reused on
   other dashboards (A0, F0) as an action list item.

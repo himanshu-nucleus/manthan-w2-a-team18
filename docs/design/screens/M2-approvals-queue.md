@@ -8,7 +8,7 @@
 | Route (suggested) | `/manager/approvals` |
 | Figma node | 4015:2191 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Manager ("Approvals" selected, badge 7) |
+| Sidebar variant | Manager ("Approvals" selected, badge 7; nav is Team dashboard / Approvals / Out of office only - no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 The manager's work queue. They scan the claims waiting for them, approve clean ones in bulk, and
@@ -54,7 +54,7 @@ Columns: (checkbox) · Employee · Claim · Amount (right-aligned) · Flags · A
 ### Bulk action bar (dark purple gradient)
 - ph/check-circle + "3 clean claims selected · ₹14,460" (white, semibold)
 - "Flagged claims need a look first" (muted)
-- Button "Clear" - ghost (low-contrast text in the design; make it readable)
+- Button "Clear" - ghost, white text
 - Button "Approve 3" - white/light button, ph/check, purple text
 
 ## Interactions & states

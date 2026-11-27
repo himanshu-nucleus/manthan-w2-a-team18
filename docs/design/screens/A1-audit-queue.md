@@ -8,7 +8,7 @@
 | Route (suggested) | /auditor/queue |
 | Figma node | 4016:2953 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Auditor (Audit queue active) |
+| Sidebar variant | Auditor (Audit queue active; nav is Dashboard / Audit queue / Audit history only - no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 The auditor's working list of manager-approved claims that need audit: claims over ₹25,000, flagged claims (duplicates, policy violations) and a 10% random sample of auto-approved claims. The auditor filters the list, opens a claim to audit it, or bulk-approves clean claims.
@@ -58,7 +58,7 @@ Columns: [checkbox] · Claim · Employee (avatar + name) · Dept · Amount (righ
 - Footer: "Showing 7 of 48" left; "Previous" and "Next" outline buttons right.
 
 ### Bulk action bar
-Dark purple gradient panel, rounded. Left: ph/check-circle + "**4 claims selected · ₹1,03,080**" + muted "Duplicates and violations can’t be bulk-approved". Right: ghost "Clear" (low-contrast on dark) and light button "Approve 4" (ph/check, white bg, purple text).
+Dark purple gradient panel, rounded. Left: ph/check-circle + "**4 claims selected · ₹1,03,080**" + muted "Duplicates and violations can’t be bulk-approved". Right: ghost "Clear" (white text) and light button "Approve 4" (ph/check, white bg, purple text).
 
 ## Interactions & states
 - Tabs filter the table and update counts; tab state should be in the URL (`?tab=duplicates`) so A0 can deep-link.
