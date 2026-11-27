@@ -73,8 +73,8 @@
         "tags": [
           "auth"
         ],
-        "summary": "Log in with username or work email + password; returns a bearer token (public)",
-        "description": "The `username` field accepts either the username or the work email (case-insensitive).\nSend the returned `access_token` as `Authorization: Bearer <token>` on every other\ncall. Unknown user, wrong password and inactive user all return the same 401.",
+        "summary": "Log in with username or email + password; returns a bearer token (public)",
+        "description": "`username` may be the username or the email address, in any letter case. Send the\nreturned `access_token` as `Authorization: Bearer <token>` on every other call.\nUnknown user, wrong password and inactive user all return the same 401.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -4805,10 +4805,10 @@
         "properties": {
           "username": {
             "type": "string",
-            "maxLength": 64,
+            "maxLength": 254,
             "minLength": 1,
             "title": "Username",
-            "description": "Username or work email (case-insensitive)."
+            "description": "Username or email address (case-insensitive). The login page sends the work email here."
           },
           "password": {
             "type": "string",

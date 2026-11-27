@@ -45,6 +45,11 @@ RUN python -m pip install --no-index --find-links=/wheels -r requirements.txt \
     && rm -rf /wheels
 
 # Source last: code changes do not invalidate the dependency layers.
+# alembic/, db/seed.sql and scripts/ are needed by the entrypoint (migrate + seed).
+COPY --chown=manthan:manthan alembic.ini ./
+COPY --chown=manthan:manthan alembic ./alembic
+COPY --chown=manthan:manthan db ./db
+COPY --chown=manthan:manthan scripts ./scripts
 COPY --chown=manthan:manthan app ./app
 RUN mkdir -p /app/uploads && chown manthan:manthan /app/uploads
 
@@ -55,4 +60,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl --fail --silent http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Waits for the database, runs `alembic upgrade head`, loads db/seed.sql, starts uvicorn.
+CMD ["python", "-m", "scripts.start"]

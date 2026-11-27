@@ -137,12 +137,12 @@ Start it from the repository root with `docker compose up -d db` (container `man
 ### Schema and dummy data (verified 2026-11-27)
 
 - **Schema = Alembic only** (`backend/alembic/versions/`). Never create tables at startup or
-  in SQL files. Migrations run from the host venv (the Docker image has no Alembic):
-  `cd backend; .\.venv\Scripts\python.exe -m alembic upgrade head`
+  in SQL files. The api container applies them on every start. Running the API from the
+  host venv instead: `cd backend; .\.venv\Scripts\python.exe -m alembic upgrade head`
 - **Dummy data = `backend/db/seed.sql`.** Idempotent (`ON CONFLICT DO NOTHING`), synthetic
-  only; append a section per new table at the end of the file. Run it from the repo root
-  after migrating:
-  `Get-Content backend\db\seed.sql | docker compose exec -T db psql -U manthan -d manthan -v ON_ERROR_STOP=1`
+  only; append a section per new table at the end of the file. The api container loads it
+  on every start (`SEED_ON_START`, default true). From the host venv, after migrating:
+  `cd backend; .\.venv\Scripts\python.exe -m scripts.seed_db`
 - **Policy rules and settings are not seed data:** the API inserts missing defaults from
   `app/policy/defaults.py` at startup (tests get them the same way).
 - Tests do not use either: they build the schema from the ORM models on in-memory SQLite.
@@ -185,7 +185,12 @@ runs inside the container - only host connections hit the wrong database. A
 - **CI:** GitHub Actions - lint + tests + dependency check, on **pull requests only** (not on
   push). Run `ruff`, `black --check` and `pytest` locally before pushing.
 - **Observability:** Prometheus + Grafana in Docker
-- **Run:** `docker compose up` must bring the whole stack up from a fresh clone, one command.
+- **Run:** `docker compose up --build` brings the whole stack up from a fresh clone, one
+  command (verified 2026-11-27): db -> api (entrypoint `scripts/start.py`: wait for the db,
+  `alembic upgrade head`, load `db/seed.sql` via `scripts/seed_db.py`, start uvicorn) ->
+  web (nginx serving the Vite build on http://localhost:8080, proxying `/api` to the api).
+  Start order is enforced by health checks. The api container runs the built image (no
+  source mount, no `--reload`); for live editing run the venv locally.
 
 ## Repository layout
 
@@ -200,7 +205,7 @@ backend/            FastAPI app (app/), alembic/, its pytest suite (tests/), Doc
   db/seed.sql       idempotent synthetic seed data
   scripts/export_openapi.py  writes docs/openapi.json
 docs/openapi.json   API contract - generated, the frontend's single source for the API
-frontend/           React 19 + Vite app (to be created)
+frontend/           React 19 + Vite app; Dockerfile (pnpm build -> nginx) + nginx.conf
 tests/e2e/          Playwright UI tests
 docs/               artifacts: adr/, runbook.md, rca-*.md, claude-journal.md, LLD, ideation
 deploy/             prometheus/, grafana/ config mounted by the root compose file

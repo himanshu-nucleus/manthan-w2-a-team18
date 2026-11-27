@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -25,20 +25,34 @@ class InvalidCredentials(AppError):
     message = "The username or password is incorrect."
 
 
+def find_login_user(db: Session, identifier: str) -> User | None:
+    """The user whose username or email matches ``identifier``, ignoring case and
+    surrounding spaces.
+
+    Usernames may themselves be email addresses, so one value could match one user's
+    username and another user's email; the username match wins, so the answer is never
+    ambiguous. Both columns are unique, so each side matches at most one user.
+    """
+    value = identifier.strip().lower()
+    if not value:
+        return None
+    by_username = db.scalar(select(User).where(func.lower(User.username) == value))
+    if by_username is not None:
+        return by_username
+    return db.scalar(select(User).where(func.lower(User.email) == value))
+
+
 @router.post(
     "/login",
     response_model=LoginResponse,
-    summary="Log in with username or work email + password; returns a bearer token (public)",
+    summary="Log in with username or email + password; returns a bearer token (public)",
     responses=error_responses(401, 422),
 )
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
-    """The `username` field accepts either the username or the work email (case-insensitive).
-    Send the returned `access_token` as `Authorization: Bearer <token>` on every other
-    call. Unknown user, wrong password and inactive user all return the same 401."""
-    identifier = body.username.strip().lower()
-    user = db.scalar(
-        select(User).where(or_(User.username == identifier, func.lower(User.email) == identifier))
-    )
+    """`username` may be the username or the email address, in any letter case. Send the
+    returned `access_token` as `Authorization: Bearer <token>` on every other call.
+    Unknown user, wrong password and inactive user all return the same 401."""
+    user = find_login_user(db, body.username)
     # Same error for unknown user, wrong password and inactive user: no account probing.
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
         # Kept even though the request fails; the username typed, never the password.
@@ -48,7 +62,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
             entity_id=user.id if user else None,
             action=AuditAction.LOGIN_FAILED,
             actor=None,
-            changes={"username": {"old": None, "new": body.username.lower()[:64]}},
+            changes={"username": {"old": None, "new": body.username.strip().lower()[:254]}},
         )
         raise InvalidCredentials()
     return LoginResponse(

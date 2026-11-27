@@ -341,3 +341,89 @@ def test_user_whose_username_is_their_work_email_can_be_added_and_log_in(
     assert created.status_code == 201, created.text
     assert created.json()["username"] == "asha.k@expenseflow.example"
     assert login.status_code == 200
+
+
+# --- login by username or email ---------------------------------------------------------
+
+
+def _user_with_email(db: Session, username: str, email: str, password: str) -> User:
+    user = _add_user(db, username, password, Role.EMPLOYEE)
+    user.email = email
+    db.flush()
+    return user
+
+
+def test_login_with_email_returns_that_user(client: TestClient, db_session: Session) -> None:
+    user = _user_with_email(db_session, "asha.k", "asha.k@expenseflow.example", "s3cret-pass")
+
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "asha.k@expenseflow.example", "password": "s3cret-pass"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["user"]["id"] == user.id
+
+
+def test_login_with_email_ignores_case_and_surrounding_spaces(
+    client: TestClient, db_session: Session
+) -> None:
+    user = _user_with_email(db_session, "asha.k", "asha.k@expenseflow.example", "s3cret-pass")
+
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "  Asha.K@ExpenseFlow.Example ", "password": "s3cret-pass"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["user"]["id"] == user.id
+
+
+def test_login_with_username_still_works_when_the_user_has_an_email(
+    client: TestClient, db_session: Session
+) -> None:
+    _user_with_email(db_session, "asha.k", "asha.k@expenseflow.example", "s3cret-pass")
+
+    assert _login(client, "asha.k", "s3cret-pass")
+
+
+def test_login_with_email_and_wrong_password_is_refused_like_any_other_failure(
+    client: TestClient, db_session: Session
+) -> None:
+    _user_with_email(db_session, "asha.k", "asha.k@expenseflow.example", "s3cret-pass")
+
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "asha.k@expenseflow.example", "password": "wrong-pass"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_credentials"
+
+
+def test_a_username_match_wins_over_another_users_email(
+    client: TestClient, db_session: Session
+) -> None:
+    """Usernames may be email addresses, so one value can be A's username and B's email."""
+    shared = "shared@expenseflow.example"
+    by_username = _add_user(db_session, shared, "pass-for-a", Role.EMPLOYEE)
+    _user_with_email(db_session, "bhavna", shared, "pass-for-b")
+
+    as_a = client.post(f"{API}/auth/login", json={"username": shared, "password": "pass-for-a"})
+    as_b = client.post(f"{API}/auth/login", json={"username": shared, "password": "pass-for-b"})
+
+    assert as_a.status_code == 200
+    assert as_a.json()["user"]["id"] == by_username.id
+    assert as_b.status_code == 401
+
+
+def test_login_accepts_an_email_longer_than_64_characters(
+    client: TestClient, db_session: Session
+) -> None:
+    email = f"{'a' * 70}@expenseflow.example"
+    user = _user_with_email(db_session, "long.email", email, "s3cret-pass")
+
+    response = client.post(f"{API}/auth/login", json={"username": email, "password": "s3cret-pass"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["user"]["id"] == user.id
