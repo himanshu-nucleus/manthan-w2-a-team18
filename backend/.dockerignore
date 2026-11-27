@@ -1,0 +1,42 @@
+# Version control / CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.venv
+venv
+env
+
+# Python caches and build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Tests are not needed in the runtime image
+tests/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker / docs
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+*.md
