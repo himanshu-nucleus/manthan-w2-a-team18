@@ -7,7 +7,7 @@
 | Role | Finance auditor |
 | Route (suggested) | /auditor |
 | Figma node | 4016:2578 |
-| Frame size | 1440 × 1249 |
+| Frame size | 1440 × 1106 |
 | Sidebar variant | Auditor (Dashboard active) |
 
 ## Purpose
@@ -17,14 +17,14 @@ Landing page for the finance auditor (sample user Sana Iqbal). Shows how many cl
 1. Sidebar (260px, Auditor variant) + Main (1180px, 32px side padding, content width 1116px).
 2. Topbar (44px) - Context dropdown reads "All departments".
 3. Header row (90px): greeting block left (808px), two buttons right.
-4. "Audit overview" card (full width, ~403px) with decorative purple gradient ellipses top-right: title row, 5 KPI cards in one row, two AI insight lines, AI prompt bar.
+4. "Audit overview" card (full width, ~260px) with decorative purple gradient ellipses top-right: title row and 5 KPI cards in one row.
 5. Two-column row (~299px): "Highest risk first" card (656px) left, "Queue by reason" card (440px) right.
 6. "My recent decisions" card (full width, ~253px) with a table.
 
 ## Content & components
 
 ### Sidebar (Auditor)
-Workspace switcher shows "Auditor". Nav: Dashboard (active, dark starry pill), Audit queue (badge **48**), Audit history; divider; Notifications (badge **3**), Policy guide, Settings. Sidebar Promo Card: "At risk this month" / **₹31,450** / "3 duplicate receipts flagged before payout" / button "Investigate" (ph/rocket-launch icon). User card: "Sana Iqbal" / "Log out of your account".
+Workspace switcher shows "Auditor". Nav: Dashboard (active, dark starry pill), Audit queue (badge **48**), Audit history; divider. The Notifications / Policy guide / Settings group that used to sit below the divider is no longer in the design (notifications remain reachable from the Topbar bell, badge **3**). Sidebar Promo Card: "At risk this month" / **₹31,450** / "3 duplicate receipts flagged before payout" / button "Investigate" (ph/rocket-launch icon). User card: "Sana Iqbal" / "Log out of your account".
 
 ### Header
 - Eyebrow: "Hi Sana Iqbal"
@@ -43,11 +43,6 @@ Workspace switcher shows "Auditor". Nav: Dashboard (active, dark starry pill), A
 | ph/copy | Duplicates flagged | 03 | ₹31,450 at risk |
 | ph/flag | Sample audits open | 14 | 10% of auto-approved |
 | ph/check-circle | Reviewed | 286 | Median 3 min each |
-
-- AI insight lines (ph/sparkle, purple), each with an underlined purple link:
-  - "EXP-2026-0810 reuses a receipt that was already paid in October." → link "Investigate"
-  - "22 clean claims over ₹25,000 can be bulk-reviewed." → link "Open bulk review"
-- AI prompt bar (pill, purple border): placeholder "Ask ExpenseFlow AI anything…", two dashed suggestion chips "Find split meal bills" (ph/fork-knife) and "Explain this duplicate" (ph/copy), round dark send button (ph/sparkle) at right.
 
 ### Highest risk first card
 Title "Highest risk first", count badge **3** (purple, top-right). Three bordered list rows, each: tinted icon square, title + Status Chip, sub-text, action button right.
@@ -79,12 +74,11 @@ Header: "My recent decisions" left, ghost link-button "Audit history" right. Tab
 
 ## Interactions & states
 - "Open audit queue" / sidebar "Audit queue" → A1. "Audit history" buttons (header + table card) → A3.
-- "Investigate" (risk row, insight link, promo card) → A2 for EXP-2026-0810.
+- "Investigate" (risk row, promo card) → A2 for EXP-2026-0810.
 - "Review" on EXP-2026-0788 → Behaviour (inferred): opens that claim's audit view (no dedicated violation screen in this set; A1 filtered to Policy violations is the nearest).
-- "Bulk review" / "Open bulk review" → Behaviour (inferred): A1 with the "Over ₹25,000" tab active.
+- "Bulk review" → Behaviour (inferred): A1 with the "Over ₹25,000" tab active.
 - Queue by reason rows → Behaviour (inferred): A1 with matching tab.
 - Month Select changes all overview figures. Kebab menu contents not shown.
-- AI prompt bar and suggestion chips: Behaviour (inferred) - sends a natural-language query; response UI not designed.
 - Claim links in the decisions table → claim audit view.
 - Empty states not designed; suggest "Nothing in your queue" in the risk card and hiding the table when no decisions.
 
@@ -93,11 +87,10 @@ Header: "My recent decisions" left, ghost link-button "Audit history" right. Tab
 - Not yet in API: auditor dashboard summary (claims this month, queue size, duplicates flagged + amount at risk, open sample audits, reviewed count, median review time) - needs e.g. `GET /audit/summary?month=`.
 - Not yet in API: risk-ranked queue items and queue counts by reason (`GET /audit/queue` with reason facets).
 - Not yet in API: auditor decisions log (`GET /audit/decisions?auditor=me`). Existing `GET /claims/{id}/audit` is per-claim only and has no auditor decision actions.
-- Not yet in API: AI insights / AI query.
 - Claim list for "Claims this month" could partly come from `GET /claims`, but there are no auditor statuses (only DRAFT, SUBMITTED today).
 
 ## Build notes
-- shadcn: Card, Button, Badge (Status Chip), Select, DropdownMenu (kebab), Table, Progress (custom gradient fill for reason bars), Input for the AI bar.
+- shadcn: Card, Button, Badge (Status Chip), Select, DropdownMenu (kebab), Table, Progress (custom gradient fill for reason bars).
 - Reuse KPI Card (also on A3), Status Chip, Sidebar Promo Card.
 - Gradient headline: `bg-clip-text text-transparent` with purple→blue gradient.
 - The decorative ellipses in the overview card are blurred background shapes - use an absolutely positioned radial gradient, `pointer-events-none`.

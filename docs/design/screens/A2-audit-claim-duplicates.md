@@ -8,7 +8,7 @@
 | Route (suggested) | /auditor/claims/:id (duplicate check) |
 | Figma node | 4016:3416 |
 | Frame size | 1440 × 1024 |
-| Sidebar variant | Auditor (Audit queue active) |
+| Sidebar variant | Auditor (Audit queue active; nav is Dashboard / Audit queue / Audit history only - no Notifications / Policy guide / Settings group) |
 
 ## Purpose
 Lets the auditor compare a flagged claim line side by side with the earlier, already-paid line it appears to duplicate, see which match rules fired, write a mandatory audit note, and decide: send back, reject the line, or clear it as not a duplicate.
