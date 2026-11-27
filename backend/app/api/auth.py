@@ -10,10 +10,11 @@ from app.api.dependencies import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.errors import AppError
-from app.models import User
+from app.models import AuditAction, User
 from app.schemas.errors import error_responses
 from app.schemas.user import LoginRequest, LoginResponse, UserOut
 from app.security import create_access_token, verify_password
+from app.services import audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,6 +37,15 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     user = db.scalar(select(User).where(User.username == body.username.lower()))
     # Same error for unknown user, wrong password and inactive user: no account probing.
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
+        # Kept even though the request fails; the username typed, never the password.
+        audit.record_detached(
+            db,
+            entity_type="user",
+            entity_id=user.id if user else None,
+            action=AuditAction.LOGIN_FAILED,
+            actor=None,
+            changes={"username": {"old": None, "new": body.username.lower()[:64]}},
+        )
         raise InvalidCredentials()
     return LoginResponse(
         access_token=create_access_token(user.id, user.role),

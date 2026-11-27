@@ -130,7 +130,25 @@ def active_delegators(db: Session, delegate_id: int, on: date) -> list[User]:
 
 def acting_for(db: Session, user: User, claim: Claim, step: ApprovalStep, on: date) -> int | None:
     """Check ``user`` may act on ``step``. Returns the id of the person they act on
-    behalf of (None when acting in their own right); raises 403 otherwise."""
+    behalf of (None when acting in their own right); raises 403 otherwise, and every
+    refusal is audited as ACCESS_DENIED."""
+    try:
+        return _acting_for(db, user, claim, step, on)
+    except NotCurrentApprover as exc:
+        from app.services import access  # local: access imports nothing from chain
+
+        access.deny(
+            db,
+            user,
+            reason=exc.message,
+            entity_type="approval_step",
+            entity_id=step.id,
+            claim_id=claim.id,
+        )
+        raise
+
+
+def _acting_for(db: Session, user: User, claim: Claim, step: ApprovalStep, on: date) -> int | None:
     if user.id == claim.employee_id:
         raise NotCurrentApprover("You cannot act on your own claim.")
 

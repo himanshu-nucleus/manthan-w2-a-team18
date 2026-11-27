@@ -1,9 +1,9 @@
 """Claim rules: ownership, draft vs submit, validation, policy and the audit trail.
 
-Access rule: an employee sees only their own claims; every other role sees all
-claims. Only the owner may change a claim, and only while it is DRAFT or
+Who may see a claim is decided in ``app.services.access`` (one rule for every
+endpoint). Only the owner may change a claim, and only while it is DRAFT or
 CLARIFICATION_REQUESTED. A claim the caller may not see is reported as not found,
-so ids cannot be probed.
+so ids cannot be probed; the attempt is audited as ACCESS_DENIED.
 
 Submit (and resubmit) runs, in one transaction: full validation -> SUBMITTED ->
 policy engine -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL with a new chain.
@@ -31,12 +31,12 @@ from app.models import (
     ClaimStatus,
     ExpenseCategory,
     PolicyOutcome,
-    Role,
     User,
 )
 from app.policy import engine
 from app.schemas.claim import ClaimWrite
-from app.services import audit, chain
+from app.services import access, audit, chain
+from app.services.access import ClaimNotFound, get_visible_claim
 
 ENTITY_TYPE = "claim"
 
@@ -53,12 +53,6 @@ LINE_FIELDS = (
     "receipt_number",
     "receipt_id",
 )
-
-
-class ClaimNotFound(AppError):
-    status_code = status.HTTP_404_NOT_FOUND
-    code = "claim_not_found"
-    message = "Claim not found."
 
 
 class NotClaimOwner(AppError):
@@ -85,24 +79,20 @@ class ClaimInvalid(AppError):
 # --- access ------------------------------------------------------------------
 
 
-def sees_all_claims(user: User) -> bool:
-    return user.role != Role.EMPLOYEE
-
-
-def get_visible_claim(db: Session, user: User, claim_id: int, *, lock: bool = False) -> Claim:
-    query = select(Claim).where(Claim.id == claim_id)
-    if lock:
-        query = query.with_for_update()
-    claim = db.scalar(query)
-    if claim is None or (not sees_all_claims(user) and claim.employee_id != user.id):
-        raise ClaimNotFound()
-    return claim
+__all__ = ["ClaimNotFound", "get_visible_claim"]
 
 
 def get_editable_claim(db: Session, user: User, claim_id: int) -> Claim:
     """The caller's own editable claim, row-locked for the rest of the transaction."""
     claim = get_visible_claim(db, user, claim_id, lock=True)
     if claim.employee_id != user.id:
+        access.deny(
+            db,
+            user,
+            reason="only the owner can change a claim",
+            entity_type="claim",
+            entity_id=claim.id,
+        )
         raise NotClaimOwner()
     if claim.status not in EDITABLE_STATUSES:
         raise ClaimNotEditable(details={"status": claim.status})
@@ -115,9 +105,7 @@ def get_editable_claim(db: Session, user: User, claim_id: int) -> Claim:
 def list_claims(
     db: Session, user: User, *, status_filter: ClaimStatus | None, limit: int, offset: int
 ) -> tuple[list[Claim], int]:
-    conditions = []
-    if not sees_all_claims(user):
-        conditions.append(Claim.employee_id == user.id)
+    conditions = [access.visibility_condition(user)]
     if status_filter is not None:
         conditions.append(Claim.status == status_filter.value)
 
@@ -134,7 +122,7 @@ def list_claims(
 
 def claim_history(db: Session, user: User, claim_id: int) -> list[AuditEvent]:
     get_visible_claim(db, user, claim_id)
-    return audit.history(db, entity_type=ENTITY_TYPE, entity_id=claim_id)
+    return audit.claim_history(db, claim_id)
 
 
 def policy_results(db: Session, user: User, claim_id: int) -> tuple[Claim, list[ClaimPolicyResult]]:
@@ -171,7 +159,7 @@ def create_claim(db: Session, user: User, body: ClaimWrite) -> Claim:
         entity_id=claim.id,
         action=AuditAction.CREATED,
         changes=audit.diff({}, _snapshot(claim)),
-        actor_id=user.id,
+        actor=user,
     )
     if body.action == "submit":
         _submit(db, claim, user)
@@ -195,7 +183,7 @@ def update_claim(db: Session, user: User, claim_id: int, body: ClaimWrite) -> Cl
             entity_id=claim.id,
             action=AuditAction.UPDATED,
             changes=changes,
-            actor_id=user.id,
+            actor=user,
         )
     if body.action == "submit":
         _submit(db, claim, user)
@@ -287,7 +275,7 @@ def _submit(db: Session, claim: Claim, user: User) -> None:
             "submitted_at": {"old": None, "new": audit.json_safe(claim.submitted_at)},
             "submission_round": {"old": claim.submission_round - 1, "new": claim.submission_round},
         },
-        actor_id=user.id,
+        actor=user,
     )
     db.flush()
     _apply_policy(db, claim, user)
@@ -349,7 +337,7 @@ def _apply_policy(db: Session, claim: Claim, user: User) -> None:
                 ],
             },
         },
-        actor_id=user.id,
+        actor=None,  # SYSTEM: the policy engine decided
     )
 
     if next_status == ClaimStatus.PENDING_APPROVAL:
@@ -373,7 +361,7 @@ def _apply_policy(db: Session, claim: Claim, user: User) -> None:
                     ],
                 }
             },
-            actor_id=user.id,
+            actor=None,  # SYSTEM: the policy engine decided
         )
 
 

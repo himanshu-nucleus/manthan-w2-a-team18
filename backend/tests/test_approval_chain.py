@@ -347,8 +347,10 @@ def test_user_without_a_delegation_cannot_approve_another_managers_step(
 
     response = _approve(client, _login(client, stranger), claim["id"])
 
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "not_current_approver"
+    # A line manager sees only their own team's claims and claims in their own chain
+    # (access rule, 2026-11-27), so to a stranger the claim does not exist.
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "claim_not_found"
 
 
 # --- 5. stale step_id (double click) --------------------------------------------

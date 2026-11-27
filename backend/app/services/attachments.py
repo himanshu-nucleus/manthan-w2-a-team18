@@ -117,9 +117,10 @@ def save_receipt(
         claim.updated_by = user.id
         audit.record(
             db,
-            entity_type=claims.ENTITY_TYPE,
-            entity_id=claim.id,
-            action=AuditAction.UPDATED,
+            entity_type="claim_attachment",
+            entity_id=attachment.id,
+            claim_id=claim.id,
+            action=AuditAction.ATTACHMENT_UPLOADED,
             changes={
                 f"attachments.{attachment.id}": {
                     "old": None,
@@ -131,7 +132,7 @@ def save_receipt(
                     },
                 }
             },
-            actor_id=user.id,
+            actor=user,
         )
         db.commit()
     except Exception:
@@ -160,4 +161,20 @@ def get_receipt(
     path = (root / attachment.stored_path).resolve()
     if not path.is_relative_to(root) or not path.is_file():
         raise AttachmentNotFound("The receipt file is missing from storage.")
+
+    # File metadata only, never its content.
+    audit.record(
+        db,
+        entity_type="claim_attachment",
+        entity_id=attachment.id,
+        claim_id=claim_id,
+        action=AuditAction.ATTACHMENT_DOWNLOADED,
+        actor=user,
+        changes={
+            "original_name": {"old": None, "new": attachment.original_name},
+            "sha256": {"old": None, "new": attachment.sha256},
+            "size_bytes": {"old": None, "new": attachment.size_bytes},
+        },
+    )
+    db.commit()
     return attachment, path

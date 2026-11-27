@@ -148,8 +148,15 @@ class AuditEventOut(BaseModel):
 
     id: int
     entity_type: str
-    entity_id: int
+    entity_id: int | None
+    claim_id: int | None
     action: str
     changes: dict[str, Any]
-    actor_id: int
+    actor_id: int | None = Field(description="null when actor_role is SYSTEM")
+    actor_role: str | None
+    on_behalf_of_id: int | None
+    comment: str | None
+    ip_address: str | None
+    request_id: str | None
+    hash: str | None
     created_at: datetime

@@ -305,7 +305,7 @@ def create_batch(
             db,
             entity_type=CLAIM_ENTITY,
             entity_id=claim.id,
-            action=AuditAction.PAID,
+            action=AuditAction.MARKED_PAID,
             changes={
                 "status": {"old": previous, "new": ClaimStatus.PAID.value},
                 "paid_at": {"old": None, "new": now.isoformat()},
@@ -313,7 +313,7 @@ def create_batch(
                 "transaction_reference": {"old": None, "new": txn},
                 "amount": {"old": None, "new": str(amounts[claim.id])},
             },
-            actor_id=user.id,
+            actor=user,
         )
 
     audit.record(
@@ -329,7 +329,7 @@ def create_batch(
             "total_amount": {"old": None, "new": str(batch.total_amount)},
             "claim_ids": {"old": None, "new": [c.id for c in claims]},
         },
-        actor_id=user.id,
+        actor=user,
     )
     db.commit()
     db.refresh(batch)
@@ -408,14 +408,14 @@ def export_batch(db: Session, user: User, batch_id: int) -> tuple[PayoutBatch, b
         db,
         entity_type=ENTITY_TYPE,
         entity_id=batch.id,
-        action=AuditAction.BATCH_EXPORTED,
+        action=AuditAction.CSV_EXPORTED,
         changes={
             "file_name": {"old": None, "new": batch.file_name},
             "export_count": {"old": batch.export_count - 1, "new": batch.export_count},
             "status": {"old": previous_status, "new": batch.status},
             "bytes": {"old": None, "new": len(content)},
         },
-        actor_id=user.id,
+        actor=user,
     )
     db.commit()
     return batch, content
