@@ -73,8 +73,8 @@
         "tags": [
           "auth"
         ],
-        "summary": "Log in with username + password; returns a bearer token (public)",
-        "description": "Send the returned `access_token` as `Authorization: Bearer <token>` on every other\ncall. Unknown user, wrong password and inactive user all return the same 401.",
+        "summary": "Log in with username or work email + password; returns a bearer token (public)",
+        "description": "The `username` field accepts either the username or the work email (case-insensitive).\nSend the returned `access_token` as `Authorization: Bearer <token>` on every other\ncall. Unknown user, wrong password and inactive user all return the same 401.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -4402,7 +4402,8 @@
             "type": "string",
             "maxLength": 64,
             "minLength": 1,
-            "title": "Username"
+            "title": "Username",
+            "description": "Username or work email (case-insensitive)."
           },
           "password": {
             "type": "string",

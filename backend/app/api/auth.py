@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -27,13 +27,17 @@ class InvalidCredentials(AppError):
 @router.post(
     "/login",
     response_model=LoginResponse,
-    summary="Log in with username + password; returns a bearer token (public)",
+    summary="Log in with username or work email + password; returns a bearer token (public)",
     responses=error_responses(401, 422),
 )
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
-    """Send the returned `access_token` as `Authorization: Bearer <token>` on every other
+    """The `username` field accepts either the username or the work email (case-insensitive).
+    Send the returned `access_token` as `Authorization: Bearer <token>` on every other
     call. Unknown user, wrong password and inactive user all return the same 401."""
-    user = db.scalar(select(User).where(User.username == body.username.lower()))
+    identifier = body.username.strip().lower()
+    user = db.scalar(
+        select(User).where(or_(User.username == identifier, func.lower(User.email) == identifier))
+    )
     # Same error for unknown user, wrong password and inactive user: no account probing.
     if user is None or not user.is_active or not verify_password(body.password, user.password_hash):
         raise InvalidCredentials()

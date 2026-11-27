@@ -70,6 +70,49 @@ def test_login_with_wrong_password_is_refused(client: TestClient, finance_head: 
     assert response.json()["error"]["code"] == "invalid_credentials"
 
 
+@pytest.fixture
+def finance_head_with_email(db_session: Session, finance_head: User) -> User:
+    finance_head.email = "finance.head@expenseflow.example"
+    db_session.flush()
+    return finance_head
+
+
+def test_login_with_work_email_returns_token(
+    client: TestClient, finance_head_with_email: User
+) -> None:
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "finance.head@expenseflow.example", "password": "admin"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["user"]["username"] == "admin"
+
+
+def test_login_with_work_email_ignores_case(
+    client: TestClient, finance_head_with_email: User
+) -> None:
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "Finance.Head@ExpenseFlow.Example", "password": "admin"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["user"]["username"] == "admin"
+
+
+def test_login_with_work_email_and_wrong_password_is_refused(
+    client: TestClient, finance_head_with_email: User
+) -> None:
+    response = client.post(
+        f"{API}/auth/login",
+        json={"username": "finance.head@expenseflow.example", "password": "nope"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_credentials"
+
+
 def test_login_with_unknown_username_is_refused(client: TestClient) -> None:
     response = client.post(f"{API}/auth/login", json={"username": "ghost", "password": "admin"})
 

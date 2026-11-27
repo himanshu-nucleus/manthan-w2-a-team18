@@ -12,7 +12,11 @@ CreatableRole = Literal["employee", "line_manager", "finance_auditor"]
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=64)
+    username: str = Field(
+        min_length=1,
+        max_length=64,
+        description="Username or work email (case-insensitive).",
+    )
     password: str = Field(min_length=1, max_length=128)
 
 
