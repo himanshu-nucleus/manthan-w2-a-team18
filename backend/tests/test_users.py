@@ -282,3 +282,19 @@ def test_fetching_user_without_token_is_refused(client: TestClient, finance_head
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "not_authenticated"
+
+
+def test_user_whose_username_is_their_work_email_can_be_added_and_log_in(
+    client: TestClient, head_headers: dict[str, str]
+) -> None:
+    body = _new_user("employee") | {"username": "Asha.K@expenseflow.example"}
+
+    created = client.post(f"{API}/users", json=body, headers=head_headers)
+    login = client.post(
+        f"{API}/auth/login",
+        json={"username": "asha.k@expenseflow.example", "password": "s3cret-pass"},
+    )
+
+    assert created.status_code == 201, created.text
+    assert created.json()["username"] == "asha.k@expenseflow.example"
+    assert login.status_code == 200

@@ -37,7 +37,8 @@ class LoginResponse(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    # `@` and `+` allowed: the login page sends the work email as the username (team decision).
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9._@+-]+$")
     full_name: str = Field(min_length=1, max_length=120)
     email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     role: CreatableRole
