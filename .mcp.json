@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "shadcn@latest", "mcp", "--cwd", "frontend"]
+    },
+    "agent-browser": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "agent-browser", "mcp"]
+    }
+  }
+}
