@@ -1,20 +1,18 @@
-# Backend CI: lint + format check + tests.
-# This workflow lives at the repository root once the backend is merged into the
-# team repo, i.e. at .github/workflows/backend-ci.yml next to the backend/ folder.
-# Every step therefore runs with working-directory: backend.
+# CI: lint + format check + tests + dependency vulnerability check.
+# GitHub only runs workflows from the repository-root .github/workflows/ folder.
 #
 # No postgres service container on purpose: the test harness uses in-memory
 # SQLite, so the suite must pass with no database available.
 
-name: backend-ci
+name: ci
 
 on:
   push:
   pull_request:
 
 jobs:
-  lint-and-test:
-    name: Lint and test
+  api:
+    name: API - lint, test, dependency check
     runs-on: ubuntu-latest
 
     defaults:
@@ -45,3 +43,9 @@ jobs:
 
       - name: Pytest
         run: pytest -q --cov=app --cov-report=term-missing
+
+      # CI-only tool, installed here rather than added to the app lock file.
+      - name: Dependency vulnerability check
+        run: |
+          python -m pip install pip-audit
+          pip-audit -r requirements.txt
