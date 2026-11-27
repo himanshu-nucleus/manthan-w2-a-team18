@@ -25,7 +25,8 @@ from app.database import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers created before the migration (scripts/start.py runs it in-process).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Take the URL from app settings rather than alembic.ini, so the same env var
 # drives the app and the migrations.
