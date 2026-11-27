@@ -6,8 +6,8 @@
 
 name: ci
 
+# Pull requests only (lead decision): plain pushes to work branches do not run CI.
 on:
-  push:
   pull_request:
 
 jobs:

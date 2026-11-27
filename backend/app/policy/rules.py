@@ -24,7 +24,12 @@ CENTS = Decimal("0.01")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 # Other claims whose spend still counts against daily limits and split detection.
-NOT_COUNTED = (ClaimStatus.DRAFT, ClaimStatus.REJECTED, ClaimStatus.AUTO_REJECTED)
+NOT_COUNTED = (
+    ClaimStatus.DRAFT,
+    ClaimStatus.REJECTED,
+    ClaimStatus.AUTO_REJECTED,
+    ClaimStatus.DUPLICATE,
+)
 
 
 def money(value: Decimal) -> str:
@@ -301,6 +306,59 @@ class DuplicateLine(RuleType):
         breaches = []
         for line in lines:
             key = (normalise(line.vendor), line.amount, line.expense_date)
+            if key in earlier:
+                breaches.append(
+                    Breach(line.position, {**_line_values(line), "match": earlier[key]})
+                )
+            else:
+                earlier[key] = f"line {line.position} of this claim"
+        return breaches
+
+
+@register
+class DuplicateReceiptNumber(RuleType):
+    """Same vendor + amount + receipt number as a line on any other counted claim (any
+    employee), or as an earlier line of this claim. Vendor and receipt number are compared
+    case- and space-insensitively. The team's duplicate rule: its outcome is MARK_DUPLICATE."""
+
+    rule_type = "DUPLICATE_RECEIPT_NUMBER"
+    Params = NoParams
+    placeholders = LINE_PLACEHOLDERS | {"match"}
+
+    def evaluate(self, ctx: EvaluationContext, rule: PolicyRule, params: NoParams) -> list[Breach]:
+        lines = [
+            line
+            for line in ctx.lines_for(rule.category)
+            if line.amount is not None and normalise(line.vendor) and normalise(line.receipt_number)
+        ]
+        if not lines:
+            return []
+
+        earlier: dict[tuple[str, Decimal, str], str] = {}
+        rows = ctx.db.execute(
+            select(
+                Claim.id,
+                ClaimLine.position,
+                ClaimLine.vendor,
+                ClaimLine.amount,
+                ClaimLine.receipt_number,
+            )
+            .join(Claim, Claim.id == ClaimLine.claim_id)
+            .where(
+                Claim.id != ctx.claim.id,
+                Claim.status.not_in([s.value for s in NOT_COUNTED]),
+                ClaimLine.amount.in_({line.amount for line in lines}),
+                ClaimLine.receipt_number.is_not(None),
+            )
+            .order_by(Claim.id, ClaimLine.position)
+        )
+        for claim_id, position, vendor, amount, number in rows:
+            key = (normalise(vendor), Decimal(amount), normalise(number))
+            earlier.setdefault(key, f"line {position} of claim #{claim_id}")
+
+        breaches = []
+        for line in lines:
+            key = (normalise(line.vendor), line.amount, normalise(line.receipt_number))
             if key in earlier:
                 breaches.append(
                     Breach(line.position, {**_line_values(line), "match": earlier[key]})

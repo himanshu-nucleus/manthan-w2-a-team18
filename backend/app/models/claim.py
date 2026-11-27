@@ -29,6 +29,8 @@ class ClaimStatus(StrEnum):
     DRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL
     PENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED
     CLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED
+    SUBMITTED -> DUPLICATE when a line repeats an earlier line's vendor, amount and
+    receipt number; final, no approval chain, not editable.
     SUBMITTED is transient: the policy engine runs in the same transaction.
     """
 
@@ -40,6 +42,7 @@ class ClaimStatus(StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     CLARIFICATION_REQUESTED = "CLARIFICATION_REQUESTED"
+    DUPLICATE = "DUPLICATE"
 
 
 # The owner may change a claim only in these states.
@@ -49,6 +52,7 @@ EDITABLE_STATUSES = frozenset({ClaimStatus.DRAFT, ClaimStatus.CLARIFICATION_REQU
 class ExpenseCategory(StrEnum):
     MEAL = "meal"
     HOTEL = "hotel"
+    LOCAL = "local"  # local conveyance; one line is one trip
     CAB = "cab"
     AIRFARE = "airfare"
     OTHER = "other"

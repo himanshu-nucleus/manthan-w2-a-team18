@@ -2,8 +2,9 @@
 
 Rules: only approver roles may delegate; no self-delegation; the delegate holds the
 same or a higher role; dates start today or later; one delegator cannot have two
-overlapping delegations; a delegate who is themselves away in that period is refused
-(no A -> B -> C chains). Resolution is one hop only (see ``chain.active_delegators``).
+overlapping delegations; no A -> B -> C chains, from either end: a delegate who is
+themselves away in that period is refused, and so is a delegator who is standing in
+for someone else in that period. Resolution is one hop only (see ``chain.active_delegators``).
 """
 
 from __future__ import annotations
@@ -52,6 +53,18 @@ def _overlapping(db: Session, user_id: int, start: date, end: date) -> Delegatio
     )
 
 
+def _covering_for(db: Session, user_id: int, start: date, end: date) -> Delegation | None:
+    """An active delegation in which ``user_id`` stands in for someone in this period."""
+    return db.scalar(
+        select(Delegation).where(
+            Delegation.delegate_id == user_id,
+            Delegation.active,
+            Delegation.from_date <= end,
+            Delegation.to_date >= start,
+        )
+    )
+
+
 def create(db: Session, user: User, body: DelegationCreate) -> Delegation:
     if user.role not in APPROVER_ROLES:
         raise CannotDelegate()
@@ -75,6 +88,11 @@ def create(db: Session, user: User, body: DelegationCreate) -> Delegation:
     if _overlapping(db, delegate.id, body.from_date, body.to_date) is not None:
         raise DelegationInvalid(
             "The delegate has delegated their own approvals in this period; "
+            "delegation chains are not allowed."
+        )
+    if _covering_for(db, user.id, body.from_date, body.to_date) is not None:
+        raise DelegationInvalid(
+            "You are standing in for another approver in this period; "
             "delegation chains are not allowed."
         )
 
