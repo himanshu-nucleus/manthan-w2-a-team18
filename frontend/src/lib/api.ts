@@ -3,18 +3,34 @@ import { clearToken, getToken } from '@/features/auth/token-storage'
 
 /** Error envelope every backend failure uses: `{ "error": { "code", "message" } }`. */
 const errorEnvelopeSchema = z.object({
-  error: z.object({ code: z.string(), message: z.string() }),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z
+      .object({ fields: z.array(z.object({ field: z.string(), message: z.string() })).optional() })
+      .loose()
+      .optional(),
+  }),
 })
+
+/** One failed field from a 422, e.g. `{ field: "lines.0.receipt_id", message: "is required…" }`. */
+export interface FieldIssue {
+  field: string
+  message: string
+}
 
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  /** Per-field problems on validation errors (422); empty otherwise. */
+  readonly fields: FieldIssue[]
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, fields: FieldIssue[] = []) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.fields = fields
   }
 }
 
@@ -44,7 +60,12 @@ async function send(path: string, method: string, body: unknown) {
     if (res.status === 401 && token) clearToken()
     const envelope = errorEnvelopeSchema.safeParse(payload)
     throw envelope.success
-      ? new ApiError(res.status, envelope.data.error.code, envelope.data.error.message)
+      ? new ApiError(
+          res.status,
+          envelope.data.error.code,
+          envelope.data.error.message,
+          envelope.data.error.details?.fields ?? [],
+        )
       : new ApiError(res.status, 'http_error', `Request failed with status ${res.status}`)
   }
   return res
@@ -68,6 +89,9 @@ export async function apiBlob(path: string) {
 
 /** Human-readable message for any error thrown by the API layer. */
 export function errorMessage(error: unknown) {
-  if (error instanceof ApiError) return error.message
+  if (error instanceof ApiError) {
+    if (!error.fields.length) return error.message
+    return `${error.message} ${error.fields.map((f) => `${f.field}: ${f.message}`).join('; ')}`
+  }
   return 'Something went wrong. Check your connection and try again.'
 }
