@@ -44,3 +44,6 @@ Thumbs.db
 
 # Uploaded receipt files (runtime data, never committed)
 uploads/
+
+# pytest JUnit reports (CI test plan input)
+reports/
