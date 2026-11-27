@@ -47,6 +47,28 @@ record each decision here as it is made.
   at the end of the build. All token code lives only in `app/security.py`
   (`create_access_token` / `read_access_token`), so the swap touches that one file - do not
   read or build tokens anywhere else.
+- **Policy engine** (main, PR #9): rules are rows in `policy_rules`, one `RuleType` class per
+  `rule_type` (`app/policy/rules.py`); settings are rows in `policy_settings`. Reference:
+  `docs/policy-approvals-api.md`. Three team decisions on top (lead, 2026-11-27, migration
+  `0004_policy_decisions`):
+  - **Duplicate rule:** `DUPLICATE_RECEIPT_NUMBER` - a line with the same vendor + amount +
+    receipt number (vendor and number case- and space-insensitive) as a line on any other
+    counted claim (any employee) or an earlier line of the same claim. Outcome
+    `MARK_DUPLICATE` (most severe) sends the whole claim to status **`DUPLICATE`**: final, no
+    approval chain, not editable (409 `claim_not_editable`), and never counted for meal
+    totals, split detection or as another duplicate's original. `DUPLICATE_LINE` and
+    `DUPLICATE_RECEIPT_HASH` are switched off (re-enabling the hash rule is one
+    `PUT /policy-rules/DUPLICATE_RECEIPT_HASH {"active": true}`).
+  - **Local category:** `local` (local conveyance, one line = one trip) with
+    `LOCAL_TRIP_LIMIT` 2,000 INR per line, routed for approval. `cab` stays with no limit;
+    `CAB_TRIP_LIMIT` is switched off.
+  - **Defaults at startup:** default rules and settings live only in
+    `app/policy/defaults.py`; the API inserts any rule (by `code`) or setting (by `key`) that
+    is missing at startup and never overwrites an existing row, so `PUT /policy-rules/{code}`
+    changes survive restarts. `seed.sql` no longer inserts them; it only switches the three
+    replaced rules off in databases seeded earlier.
+  - Rule changes take effect on the next submit. There are no rule versions, drafts or
+    effective dates in the API.
 
 ## Non-negotiable gates
 
@@ -102,6 +124,8 @@ Start it from the repository root with `docker compose up -d db` (container `man
   only; append a section per new table at the end of the file. Run it from the repo root
   after migrating:
   `Get-Content backend\db\seed.sql | docker compose exec -T db psql -U manthan -d manthan -v ON_ERROR_STOP=1`
+- **Policy rules and settings are not seed data:** the API inserts missing defaults from
+  `app/policy/defaults.py` at startup (tests get them the same way).
 - Tests do not use either: they build the schema from the ORM models on in-memory SQLite.
 
 ### Running the backend locally (verified 2026-11-27)
@@ -170,8 +194,8 @@ CLAUDE.md           this file
 
 ## Engineering standards
 
-- **Branches:** protected `main`; integration branch `pre-main`; one short-lived branch per
-  layer and entity of work, merged into `pre-main` after one teammate reviews. See
+- **Branches:** protected `main` is the core branch; one short-lived branch per layer and
+  entity of work, merged into `main` by pull request after one teammate reviews. See
   [Branching](#branching---one-branch-per-layer-and-entity) below.
 - **Commits:** imperative, one change each, prefixed `feat:` `fix:` `test:` `docs:` `ci:` `chore:`
 - **Formatting:** Black + Ruff (Python), Prettier + ESLint (JS). Must pass before commit.
@@ -223,15 +247,14 @@ inside the paths for the role you are working as**, and do not reformat, refacto
 High-conflict shared files - announce before editing: `setup/requirements-hackathon.txt`,
 `package.json`, `docker-compose.yml`, the database schema.
 
-Workflow: `git pull --rebase origin pre-main` before starting and before every push; work on
-your own layer/entity branch (below); one teammate reviews before merge into `pre-main`.
+Workflow: `git pull --rebase origin main` before starting and before every push; work on
+your own layer/entity branch (below); one teammate reviews before merge into `main`.
 
 ## Branching - one branch per layer and entity
 
 ```
-main        protected; demo-ready only. Updated from pre-main by the lead after the
-            integrated stack passes tests and a fresh-clone start.
-pre-main    integration branch. Every work branch is cut from it and merged back into it.
+main        core branch (lead, 2026-11-27; pre-main retired). Protected. Every work branch
+            is cut from it and merged back into it by pull request after one review.
 <work>      one branch per layer + entity, named below. Short-lived: merge within ~1 hour.
 ```
 
@@ -265,16 +288,16 @@ Rules:
   (`feature/be-claims`, `feature/fe-claims`). A schema change goes on its own `db-` branch
   and merges before the `be-` branch that needs it.
 - **One entity per branch.** Do not mix claims and payout work on one branch; open a new one.
-- **Cut from and merge into `pre-main` only.** Never branch from or merge into `main`
-  directly, and never merge one work branch into another.
-- **Before merging:** `git pull --rebase origin pre-main`, tests and lint pass, one teammate
+- **Cut from and merge into `main` only**, by pull request - never push straight to `main`,
+  and never merge one work branch into another.
+- **Before merging:** `git pull --rebase origin main`, tests and lint pass, one teammate
   has reviewed. Delete the branch after merge.
 - **Backend branches that touch an endpoint** regenerate and commit `docs/openapi.json` in
-  the same branch, so the contract is correct the moment it lands in `pre-main`.
+  the same branch, so the contract is correct the moment it lands in `main`.
 
 ### Frontend integration
 
-- **Single point of contact: `docs/openapi.json` on `pre-main`.** It holds every path,
+- **Single point of contact: `docs/openapi.json` on `main`.** It holds every path,
   method, one-line summary (what + who may call it), request/response schema, error
   responses, auth scheme and `operationId`. `fe-` branches integrate against it and nothing
   else. To browse it, open http://localhost:8000/docs (the same contract, live) or import
@@ -283,7 +306,7 @@ Rules:
 - If an endpoint the screen needs is not in that file yet, build against fixtures that
   match the planned shape and ask the backend owner; do not guess a path or edit backend
   code from an `fe-` branch.
-- Merge an `fe-` branch into `pre-main` only after the `be-` branch for its endpoints has
+- Merge an `fe-` branch into `main` only after the `be-` branch for its endpoints has
   merged, and check the screen against the running API, not fixtures.
 
 ## Team skills
