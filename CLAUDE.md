@@ -69,6 +69,25 @@ record each decision here as it is made.
     replaced rules off in databases seeded earlier.
   - Rule changes take effect on the next submit. There are no rule versions, drafts or
     effective dates in the API.
+- **Finance dashboard (lead, 2026-11-27):** `GET /api/v1/dashboard/summary?month=YYYY-MM`
+  (default: current month), `finance_auditor` and `finance_head` only
+  (`app/services/dashboard.py`). Built only from existing data:
+  - A claim's month is the month of `submitted_at` in the business time zone
+    (`settings.timezone`, Asia/Kolkata - the same one payout batches use). Spend, claim
+    counts, violations, categories and departments use counted claims only (the engine's
+    `NOT_COUNTED` excluded: draft, rejected, auto-rejected, duplicate; `PAID` counts).
+    Each KPI carries the previous month.
+  - Policy violations = current-round lines with a breach finding / all lines.
+  - Approval time = `submitted_at` -> `approved_at`, for claims approved by people in the
+    month (`APPROVED` or since `PAID`); auto-approved claims are excluded.
+  - `ready_for_payout` = what a payout batch could pay now, using the payout rules in
+    `app/services/payouts.py` (approved or auto-approved, fully approved, not in a batch,
+    not paid, not held for sample audit) with no date limit.
+  - `needs_action`: the caller's pending approvals and claims awaiting approval above the
+    finance_head threshold. `recent_events`: latest 10 approve / reject / send-back /
+    step-approve / policy-rule-update / batch-created / batch-exported audit events.
+  - `spend_by_department` groups by the claimant's `users.department`; no department ->
+    `"Unassigned"`.
 
 ## Non-negotiable gates
 

@@ -2453,10 +2453,108 @@
           }
         }
       }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Finance overview for one month: KPIs, my actions, spend charts, recent events (finance_auditor and finance_head only)",
+        "description": "Spend, claim counts and violations cover counted claims (not draft, rejected,\nauto-rejected or duplicate) submitted in the month. Each KPI carries the previous\nmonth for the \"vs last month\" figure. `ready_for_payout` uses the payout batch rules\n(approved, not yet in a batch or paid). `spend_by_department` groups by the claimant's\ndepartment.",
+        "operationId": "get_dashboard_summary",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM in the business time zone; defaults to the current month.",
+              "title": "Month"
+            },
+            "description": "YYYY-MM in the business time zone; defaults to the current month."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token, or wrong credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but the role is not allowed to do this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body or parameters are invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AmountKpi": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "INR, this month."
+          },
+          "previous": {
+            "type": "string",
+            "title": "Previous",
+            "description": "INR, the month before."
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "previous"
+        ],
+        "title": "AmountKpi"
+      },
       "ApprovalStepOut": {
         "properties": {
           "id": {
@@ -2562,6 +2660,45 @@
           "created_at"
         ],
         "title": "ApprovalStepOut"
+      },
+      "ApprovalTimeKpi": {
+        "properties": {
+          "average_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Hours",
+            "description": "Submit -> final approval (approved_at), averaged over claims approved by people this month, including those since paid; auto-approved claims excluded. Null when there were none."
+          },
+          "previous_average_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Average Hours"
+          },
+          "approved_claims": {
+            "type": "integer",
+            "title": "Approved Claims",
+            "description": "Claims the average is over."
+          }
+        },
+        "type": "object",
+        "required": [
+          "average_hours",
+          "previous_average_hours",
+          "approved_claims"
+        ],
+        "title": "ApprovalTimeKpi"
       },
       "ApproveRequest": {
         "properties": {
@@ -3022,6 +3159,24 @@
           "file"
         ],
         "title": "Body_upload_attachment"
+      },
+      "CategorySpend": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "amount"
+        ],
+        "title": "CategorySpend"
       },
       "ClaimLineIn": {
         "properties": {
@@ -3705,6 +3860,94 @@
         ],
         "title": "CommentOut"
       },
+      "CountKpi": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "previous"
+        ],
+        "title": "CountKpi"
+      },
+      "DashboardSummary": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month",
+            "description": "The month summarised, YYYY-MM (business time zone)."
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "active_employees": {
+            "type": "integer",
+            "title": "Active Employees",
+            "description": "Active users with the employee role."
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/Kpis"
+          },
+          "needs_action": {
+            "$ref": "#/components/schemas/NeedsAction"
+          },
+          "monthly_spend": {
+            "items": {
+              "$ref": "#/components/schemas/MonthSpend"
+            },
+            "type": "array",
+            "title": "Monthly Spend",
+            "description": "January to December of the month's year."
+          },
+          "spend_by_category": {
+            "items": {
+              "$ref": "#/components/schemas/CategorySpend"
+            },
+            "type": "array",
+            "title": "Spend By Category",
+            "description": "This month, largest first."
+          },
+          "spend_by_department": {
+            "items": {
+              "$ref": "#/components/schemas/DepartmentSpend"
+            },
+            "type": "array",
+            "title": "Spend By Department",
+            "description": "This month by the claimant's department, largest first; users without a department are grouped as 'Unassigned'."
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceEvent"
+            },
+            "type": "array",
+            "title": "Recent Events",
+            "description": "Latest 10 finance events, newest first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "generated_at",
+          "active_employees",
+          "kpis",
+          "needs_action",
+          "monthly_spend",
+          "spend_by_category",
+          "spend_by_department",
+          "recent_events"
+        ],
+        "title": "DashboardSummary"
+      },
       "DecisionRequest": {
         "properties": {
           "step_id": {
@@ -3840,6 +4083,24 @@
           "cancelled_at"
         ],
         "title": "DelegationOut"
+      },
+      "DepartmentSpend": {
+        "properties": {
+          "department": {
+            "type": "string",
+            "title": "Department"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "department",
+          "amount"
+        ],
+        "title": "DepartmentSpend"
       },
       "EligibleClaim": {
         "properties": {
@@ -3994,6 +4255,147 @@
         ],
         "title": "ExpenseCategory"
       },
+      "FinanceEvent": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "actor_id": {
+            "type": "integer",
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "type": "string",
+            "title": "Actor Name"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Audit action: APPROVED, REJECTED, SENT_BACK, STEP_APPROVED, POLICY_RULE_UPDATED, BATCH_CREATED or BATCH_EXPORTED."
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "integer",
+            "title": "Entity Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "actor_id",
+          "actor_name",
+          "action",
+          "entity_type",
+          "entity_id"
+        ],
+        "title": "FinanceEvent"
+      },
+      "HighValueClaim": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "total_amount": {
+            "type": "string",
+            "title": "Total Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "employee_id",
+          "employee_name",
+          "total_amount"
+        ],
+        "title": "HighValueClaim"
+      },
+      "HighValuePending": {
+        "properties": {
+          "threshold": {
+            "type": "string",
+            "title": "Threshold",
+            "description": "The finance_head approval threshold (INR)."
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/HighValueClaim"
+            },
+            "type": "array",
+            "title": "Claims",
+            "description": "Largest first, at most 5."
+          }
+        },
+        "type": "object",
+        "required": [
+          "threshold",
+          "count",
+          "claims"
+        ],
+        "title": "HighValuePending"
+      },
+      "Kpis": {
+        "properties": {
+          "claims": {
+            "$ref": "#/components/schemas/CountKpi"
+          },
+          "total_spend": {
+            "$ref": "#/components/schemas/AmountKpi"
+          },
+          "policy_violations": {
+            "$ref": "#/components/schemas/ViolationsKpi"
+          },
+          "approval_time": {
+            "$ref": "#/components/schemas/ApprovalTimeKpi"
+          },
+          "ready_for_payout": {
+            "$ref": "#/components/schemas/PayoutKpi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claims",
+          "total_spend",
+          "policy_violations",
+          "approval_time",
+          "ready_for_payout"
+        ],
+        "title": "Kpis"
+      },
       "LoginRequest": {
         "properties": {
           "username": {
@@ -4043,6 +4445,69 @@
           "user"
         ],
         "title": "LoginResponse"
+      },
+      "MonthSpend": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month",
+            "description": "YYYY-MM"
+          },
+          "claims": {
+            "type": "integer",
+            "title": "Claims"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "claims",
+          "amount"
+        ],
+        "title": "MonthSpend"
+      },
+      "NeedsAction": {
+        "properties": {
+          "my_pending_approvals": {
+            "type": "integer",
+            "title": "My Pending Approvals",
+            "description": "Approval steps waiting on the caller (same rule as GET /approvals/pending)."
+          },
+          "high_value_pending": {
+            "$ref": "#/components/schemas/HighValuePending",
+            "description": "Claims awaiting approval with a total above the finance_head threshold."
+          }
+        },
+        "type": "object",
+        "required": [
+          "my_pending_approvals",
+          "high_value_pending"
+        ],
+        "title": "NeedsAction"
+      },
+      "PayoutKpi": {
+        "properties": {
+          "claims": {
+            "type": "integer",
+            "title": "Claims",
+            "description": "Claims a payout batch could pay now: approved or auto-approved, fully approved, not in a batch, not paid, not held for sample audit (any approval date)."
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount",
+            "description": "Their total, INR."
+          }
+        },
+        "type": "object",
+        "required": [
+          "claims",
+          "amount"
+        ],
+        "title": "PayoutKpi"
       },
       "PendingItem": {
         "properties": {
@@ -4490,6 +4955,37 @@
           "created_at"
         ],
         "title": "UserOut"
+      },
+      "ViolationsKpi": {
+        "properties": {
+          "lines": {
+            "type": "integer",
+            "title": "Lines",
+            "description": "Claim lines with at least one policy breach this month."
+          },
+          "total_lines": {
+            "type": "integer",
+            "title": "Total Lines",
+            "description": "All lines of this month's counted claims."
+          },
+          "rate_percent": {
+            "type": "number",
+            "title": "Rate Percent",
+            "description": "lines / total_lines x 100, one decimal; 0 if none."
+          },
+          "previous_lines": {
+            "type": "integer",
+            "title": "Previous Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lines",
+          "total_lines",
+          "rate_percent",
+          "previous_lines"
+        ],
+        "title": "ViolationsKpi"
       }
     },
     "securitySchemes": {
