@@ -30,7 +30,7 @@ class PolicyRuleUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     params: dict[str, Any] | None = None
-    outcome_on_breach: Literal["ROUTE_FOR_APPROVAL", "AUTO_REJECT"] | None = None
+    outcome_on_breach: Literal["ROUTE_FOR_APPROVAL", "AUTO_REJECT", "MARK_DUPLICATE"] | None = None
     active: bool | None = None
     reason_template: str | None = Field(default=None, min_length=1, max_length=500)
 

@@ -319,6 +319,7 @@ def _apply_policy(db: Session, claim: Claim, user: User) -> None:
         PolicyOutcome.AUTO_APPROVE: ClaimStatus.AUTO_APPROVED,
         PolicyOutcome.AUTO_REJECT: ClaimStatus.AUTO_REJECTED,
         PolicyOutcome.ROUTE_FOR_APPROVAL: ClaimStatus.PENDING_APPROVAL,
+        PolicyOutcome.MARK_DUPLICATE: ClaimStatus.DUPLICATE,
     }[evaluation.outcome]
     claim.policy_outcome = evaluation.outcome.value
     claim.policy_evaluated_at = evaluated_at

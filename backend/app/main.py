@@ -18,9 +18,11 @@ from fastapi.routing import APIRoute
 
 from app.api.router import api_router
 from app.config import Settings, get_settings
+from app.database import get_db
 from app.errors import register_exception_handlers
 from app.health import router as health_router
 from app.observability import register_observability
+from app.policy.defaults import ensure_policy_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup and shutdown.
 
     Deliberately does NOT create tables - schema changes go through Alembic so
-    that migrations are reviewable and repeatable. Seeding is a separate script.
+    that migrations are reviewable and repeatable. Seeding (users) is a separate
+    script; the default policy rules and settings are inserted here, only if missing.
     """
     settings = get_settings()
     logger.info("Starting %s (%s)", settings.app_name, settings.environment)
+    # Honour a get_db override so tests get the rules in their own database.
+    ensure_policy_defaults(app.dependency_overrides.get(get_db, get_db))
     yield
     logger.info("Shutting down %s", settings.app_name)
 

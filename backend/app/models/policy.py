@@ -35,6 +35,9 @@ class PolicyOutcome(StrEnum):
     AUTO_APPROVE = "AUTO_APPROVE"
     ROUTE_FOR_APPROVAL = "ROUTE_FOR_APPROVAL"
     AUTO_REJECT = "AUTO_REJECT"
+    # Same vendor + amount + receipt number as an earlier line: the claim becomes
+    # DUPLICATE, which is final and gets no approval chain.
+    MARK_DUPLICATE = "MARK_DUPLICATE"
 
     @property
     def severity(self) -> int:
@@ -45,16 +48,17 @@ _SEVERITY = {
     PolicyOutcome.AUTO_APPROVE: 0,
     PolicyOutcome.ROUTE_FOR_APPROVAL: 1,
     PolicyOutcome.AUTO_REJECT: 2,
+    PolicyOutcome.MARK_DUPLICATE: 3,
 }
 
-BREACH_OUTCOMES = ("ROUTE_FOR_APPROVAL", "AUTO_REJECT")
+BREACH_OUTCOMES = ("ROUTE_FOR_APPROVAL", "AUTO_REJECT", "MARK_DUPLICATE")
 
 
 class PolicyRule(Base):
     __tablename__ = "policy_rules"
     __table_args__ = (
         CheckConstraint(
-            "outcome_on_breach IN ('ROUTE_FOR_APPROVAL', 'AUTO_REJECT')",
+            "outcome_on_breach IN ('ROUTE_FOR_APPROVAL', 'AUTO_REJECT', 'MARK_DUPLICATE')",
             name="ck_policy_rules_outcome",
         ),
     )

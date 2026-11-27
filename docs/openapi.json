@@ -2673,10 +2673,11 @@
           "PENDING_APPROVAL",
           "APPROVED",
           "REJECTED",
-          "CLARIFICATION_REQUESTED"
+          "CLARIFICATION_REQUESTED",
+          "DUPLICATE"
         ],
         "title": "ClaimStatus",
-        "description": "Claim lifecycle.\n\nDRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL\nPENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED\nCLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED\nSUBMITTED is transient: the policy engine runs in the same transaction."
+        "description": "Claim lifecycle.\n\nDRAFT -> SUBMITTED -> AUTO_APPROVED | AUTO_REJECTED | PENDING_APPROVAL\nPENDING_APPROVAL -> APPROVED | REJECTED | CLARIFICATION_REQUESTED\nCLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED\nSUBMITTED -> DUPLICATE when a line repeats an earlier line's vendor, amount and\nreceipt number; final, no approval chain, not editable.\nSUBMITTED is transient: the policy engine runs in the same transaction."
       },
       "ClaimSummary": {
         "properties": {
@@ -3044,6 +3045,7 @@
         "enum": [
           "meal",
           "hotel",
+          "local",
           "cab",
           "airfare",
           "other"
@@ -3380,7 +3382,8 @@
                 "type": "string",
                 "enum": [
                   "ROUTE_FOR_APPROVAL",
-                  "AUTO_REJECT"
+                  "AUTO_REJECT",
+                  "MARK_DUPLICATE"
                 ]
               },
               {
