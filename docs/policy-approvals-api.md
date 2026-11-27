@@ -281,7 +281,7 @@ PUT /api/v1/policy-rules/MEAL_DAILY_LIMIT        (finance head)
  "updated_at": "...", "updated_by": 1}
 ```
 
-`params` are validated against the rule type (`{"limit": "-5"}` → 422), and `reason_template` may only use that rule type's placeholders (`{nope}` → 422). Every change writes a `POLICY_RULE_UPDATED` audit event.
+`params` are validated against the rule type (`{"limit": "-5"}` → 422), and `reason_template` may only use that rule type's placeholders (`{nope}` → 422). Every change writes a `RULE_UPDATED` audit event (`POLICY_RULE_UPDATED` before migration 0006).
 
 ## New error codes
 
