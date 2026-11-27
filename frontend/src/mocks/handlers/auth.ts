@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { LoginRequest } from '@/features/auth/api'
-import { MOCK_PASSWORD, mockUsers } from './data'
+import { MOCK_PASSWORD, mockUsers } from '../data'
 
 const TOKEN_PREFIX = 'mock-token-'
 
@@ -8,7 +8,7 @@ function unauthorized(code: string, message: string) {
   return HttpResponse.json({ error: { code, message } }, { status: 401 })
 }
 
-export const handlers = [
+export const authHandlers = [
   http.post('/api/v1/auth/login', async ({ request }) => {
     const body = (await request.json()) as LoginRequest
     await delay()
