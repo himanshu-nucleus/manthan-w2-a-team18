@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import (
     BigInteger,
@@ -22,6 +22,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
+if TYPE_CHECKING:
+    from app.models.payout import PayoutBatch
+
 
 class ClaimStatus(StrEnum):
     """Claim lifecycle.
@@ -31,6 +34,7 @@ class ClaimStatus(StrEnum):
     CLARIFICATION_REQUESTED -> (edit, resubmit) -> SUBMITTED
     SUBMITTED -> DUPLICATE when a line repeats an earlier line's vendor, amount and
     receipt number; final, no approval chain, not editable.
+    APPROVED | AUTO_APPROVED -> PAID (in a payout batch)
     SUBMITTED is transient: the policy engine runs in the same transaction.
     """
 
@@ -43,7 +47,11 @@ class ClaimStatus(StrEnum):
     REJECTED = "REJECTED"
     CLARIFICATION_REQUESTED = "CLARIFICATION_REQUESTED"
     DUPLICATE = "DUPLICATE"
+    PAID = "PAID"
 
+
+# Statuses a payout batch may pay.
+PAYABLE_STATUSES = frozenset({ClaimStatus.APPROVED, ClaimStatus.AUTO_APPROVED})
 
 # The owner may change a claim only in these states.
 EDITABLE_STATUSES = frozenset({ClaimStatus.DRAFT, ClaimStatus.CLARIFICATION_REQUESTED})
@@ -89,6 +97,14 @@ class Claim(Base):
         DateTime(timezone=True), nullable=True
     )
     submission_round: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # When the claim reached APPROVED (last approval step) or AUTO_APPROVED (policy run).
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payout_batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("payout_batches.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     # Optimistic lock: every UPDATE checks and bumps it, so concurrent writes fail.
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
@@ -113,6 +129,13 @@ class Claim(Base):
         back_populates="claim",
         order_by="ClaimAttachment.id",
     )
+    # Not eagerly joined: claim rows are read with SELECT ... FOR UPDATE, which PostgreSQL
+    # refuses on the nullable side of an outer join.
+    payout_batch: Mapped[PayoutBatch | None] = relationship()
+
+    @property
+    def payout_batch_reference(self) -> str | None:
+        return self.payout_batch.batch_reference if self.payout_batch else None
 
     __mapper_args__: ClassVar[dict[str, Any]] = {"version_id_col": version}
 

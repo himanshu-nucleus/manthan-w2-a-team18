@@ -104,4 +104,22 @@ ON CONFLICT (username) DO NOTHING;
 UPDATE policy_rules SET active = false
 WHERE code IN ('DUPLICATE_LINE', 'DUPLICATE_RECEIPT_HASH', 'CAB_TRIP_LIMIT');
 
+-- ---------------------------------------------------------------------------
+-- Departments for the demo users (printed on payout files). Only fills blanks.
+-- ---------------------------------------------------------------------------
+UPDATE users SET department = CASE username
+        WHEN 'admin' THEN 'Finance'
+        WHEN 'head2' THEN 'Finance'
+        WHEN 'auditor' THEN 'Finance'
+        WHEN 'auditor1' THEN 'Finance'
+        WHEN 'manager' THEN 'Consulting'
+        WHEN 'employee' THEN 'Consulting'
+        WHEN 'manager1' THEN 'Engineering'
+        WHEN 'employee1' THEN 'Engineering'
+        WHEN 'employee2' THEN 'Engineering'
+    END
+WHERE department IS NULL
+  AND username IN ('admin', 'head2', 'auditor', 'auditor1', 'manager', 'employee',
+                   'manager1', 'employee1', 'employee2');
+
 COMMIT;
