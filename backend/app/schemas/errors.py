@@ -27,7 +27,10 @@ _DESCRIPTIONS = {
     403: "Logged in, but the role is not allowed to do this.",
     404: "Not found.",
     409: "Conflicts with existing data.",
+    413: "The uploaded file is larger than the limit.",
+    415: "The uploaded file type is not accepted.",
     422: "The request body or parameters are invalid.",
+    503: "Server configuration (for example the policy rules) is missing.",
 }
 
 

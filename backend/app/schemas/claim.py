@@ -106,11 +106,15 @@ class ClaimSummary(BaseModel):
     status: str
     total_amount: Decimal
     submitted_at: datetime | None
+    policy_outcome: str | None
+    submission_round: int
+    version: int
     created_at: datetime
     updated_at: datetime
 
 
 class ClaimOut(ClaimSummary):
+    policy_evaluated_at: datetime | None
     created_by: int
     updated_by: int
     lines: list[ClaimLineOut]
