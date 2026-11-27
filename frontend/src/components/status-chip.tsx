@@ -62,6 +62,8 @@ export const CLAIM_STATUS: Record<string, { label: string; tone: Tone }> = {
   APPROVED: { label: 'Approved', tone: 'success' },
   REJECTED: { label: 'Rejected', tone: 'danger' },
   CLARIFICATION_REQUESTED: { label: 'Sent back', tone: 'warning' },
+  DUPLICATE: { label: 'Duplicate', tone: 'danger' },
+  PAID: { label: 'Paid', tone: 'success' },
 }
 
 export function ClaimStatusChip({ status, className }: { status: string; className?: string }) {
@@ -74,6 +76,7 @@ export const POLICY_OUTCOME: Record<string, { label: string; tone: Tone }> = {
   AUTO_APPROVE: { label: 'Within policy', tone: 'success' },
   ROUTE_FOR_APPROVAL: { label: 'Needs approval', tone: 'warning' },
   AUTO_REJECT: { label: 'Auto-rejected', tone: 'danger' },
+  MARK_DUPLICATE: { label: 'Duplicate', tone: 'danger' },
 }
 
 export function PolicyOutcomeChip({

@@ -1,7 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { PageHeader } from '@/components/app-shell'
+import { ClaimForm } from '@/features/claims/components/claim-form'
 
-// Placeholder - replaced by the N1-N4 screen.
 export const Route = createFileRoute('/_authed/claims/new')({
-  component: () => <PageHeader title="New claim" description="Coming soon." />,
+  head: () => ({ meta: [{ title: 'New claim · ExpenseFlow' }] }),
+  component: NewClaimPage,
 })
+
+function NewClaimPage() {
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <PageHeader
+        title="New claim"
+        description="Add your expenses, save a draft to attach receipts, then submit."
+      />
+      <ClaimForm />
+    </div>
+  )
+}

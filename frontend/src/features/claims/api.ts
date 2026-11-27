@@ -14,17 +14,20 @@ export const CLAIM_STATUSES = [
   'APPROVED',
   'REJECTED',
   'CLARIFICATION_REQUESTED',
+  'DUPLICATE',
+  'PAID',
 ] as const
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number]
 
 /** Statuses in which the owner may PUT / upload receipts; anything else is 409. */
 export const EDITABLE_STATUSES: readonly string[] = ['DRAFT', 'CLARIFICATION_REQUESTED']
 
-export const EXPENSE_CATEGORIES = ['meal', 'hotel', 'cab', 'airfare', 'other'] as const
+export const EXPENSE_CATEGORIES = ['meal', 'hotel', 'local', 'cab', 'airfare', 'other'] as const
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   meal: 'Meals',
   hotel: 'Hotel',
+  local: 'Local travel',
   cab: 'Local cab',
   airfare: 'Airfare',
   other: 'Other',
@@ -68,6 +71,9 @@ export const claimSummarySchema = z.object({
   total_amount: z.string(),
   submitted_at: dateTime.nullable(),
   policy_outcome: z.string().nullable(),
+  approved_at: dateTime.nullable().optional(),
+  paid_at: dateTime.nullable().optional(),
+  payout_batch_reference: z.string().nullable().optional(),
   submission_round: z.number(),
   version: z.number(),
   created_at: dateTime,
@@ -136,10 +142,17 @@ export type PolicyResults = z.infer<typeof policyResultsSchema>
 export const auditEventSchema = z.object({
   id: z.number(),
   entity_type: z.string(),
-  entity_id: z.number(),
+  entity_id: z.number().nullable(),
+  claim_id: z.number().nullable().optional(),
   action: z.string(),
   changes: z.record(z.string(), z.unknown()),
-  actor_id: z.number(),
+  actor_id: z.number().nullable(),
+  actor_role: z.string().nullable().optional(),
+  on_behalf_of_id: z.number().nullable().optional(),
+  comment: z.string().nullable().optional(),
+  ip_address: z.string().nullable().optional(),
+  request_id: z.string().nullable().optional(),
+  hash: z.string().nullable().optional(),
   created_at: dateTime,
 })
 export type AuditEvent = z.infer<typeof auditEventSchema>
