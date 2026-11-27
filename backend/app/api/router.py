@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import approvals, auth, claims, dashboard, delegations, policy, users
+from app.api import approvals, auth, claims, dashboard, delegations, payouts, policy, users
 
 api_router = APIRouter()
 
@@ -30,4 +30,5 @@ api_router.include_router(claims.router)
 api_router.include_router(approvals.router)
 api_router.include_router(delegations.router)
 api_router.include_router(policy.router)
+api_router.include_router(payouts.router)
 api_router.include_router(dashboard.router)

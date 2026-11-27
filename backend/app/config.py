@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 5 * 1024 * 1024
     max_attachments_per_claim: int = 10
 
+    # Business time zone: "today", approval dates and payout value dates are IST days.
+    timezone: str = "Asia/Kolkata"
+
     @property
     def is_local(self) -> bool:
         return self.environment.lower() in {"local", "dev", "development"}

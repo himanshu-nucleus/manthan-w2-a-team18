@@ -1,28 +1,32 @@
 """Finance dashboard summary, built only from existing claims, policy and approval data.
 
 Rules:
-- A claim's month is the India (IST, UTC+05:30) calendar month of ``submitted_at``.
+- A claim's month is the calendar month of ``submitted_at`` in the business time zone
+  (``settings.timezone``, Asia/Kolkata), the same one payout batches use.
 - "Counted" claims are those the policy engine counts (``app.policy.rules.NOT_COUNTED``
   excluded: drafts, rejected, auto-rejected and duplicates). Spend, claim counts,
   violations and categories use counted claims only.
-- Approval time: submit -> the last APPROVED step of the claim's current round, for
-  claims whose final approval falls in the month. Auto-approved claims have no steps
-  and are left out.
-- Ready for payout: every APPROVED or AUTO_APPROVED claim (no payout batches exist yet).
-- Spend by department is always empty until users get a department.
+- Approval time: ``submitted_at`` -> ``approved_at`` (the last approval step), for claims
+  approved by people in the month (approved or since paid). Auto-approved claims are
+  left out.
+- Ready for payout: exactly what a payout batch could pay now - approved or
+  auto-approved, fully approved, not in a batch, not paid, not held for sample audit
+  (``app.services.payouts`` rules), with no date limit.
+- Spend by department groups counted claims by the claimant's ``users.department``;
+  users without one show as "Unassigned".
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    ApprovalStep,
+    PAYABLE_STATUSES,
     AuditAction,
     AuditEvent,
     Claim,
@@ -30,10 +34,9 @@ from app.models import (
     ClaimPolicyResult,
     ClaimStatus,
     Role,
-    StepStatus,
     User,
 )
-from app.models.policy import BREACH_OUTCOMES
+from app.models.policy import BREACH_OUTCOMES, PolicyOutcome
 from app.policy import engine
 from app.policy.rules import NOT_COUNTED
 from app.schemas.dashboard import (
@@ -42,6 +45,7 @@ from app.schemas.dashboard import (
     CategorySpend,
     CountKpi,
     DashboardSummary,
+    DepartmentSpend,
     FinanceEvent,
     HighValueClaim,
     HighValuePending,
@@ -51,25 +55,27 @@ from app.schemas.dashboard import (
     PayoutKpi,
     ViolationsKpi,
 )
-from app.services import approvals
+from app.services import approvals, payouts
 
-IST = timezone(timedelta(hours=5, minutes=30), "IST")
 CENTS = Decimal("0.01")
 NOT_COUNTED_VALUES = [status.value for status in NOT_COUNTED]
-PAYABLE = (ClaimStatus.APPROVED.value, ClaimStatus.AUTO_APPROVED.value)
+APPROVED_BY_PEOPLE = (ClaimStatus.APPROVED.value, ClaimStatus.PAID.value)
+UNASSIGNED = "Unassigned"
 FINANCE_EVENT_ACTIONS = (
     AuditAction.APPROVED,
     AuditAction.REJECTED,
     AuditAction.SENT_BACK,
     AuditAction.STEP_APPROVED,
     AuditAction.POLICY_RULE_UPDATED,
+    AuditAction.BATCH_CREATED,
+    AuditAction.BATCH_EXPORTED,
 )
 RECENT_EVENTS = 10
 HIGH_VALUE_SHOWN = 5
 
 
 def current_month() -> date:
-    return datetime.now(UTC).astimezone(IST).date().replace(day=1)
+    return payouts.business_today().replace(day=1)
 
 
 def summary(db: Session, user: User, month: date) -> DashboardSummary:
@@ -102,7 +108,7 @@ def summary(db: Session, user: User, month: date) -> DashboardSummary:
         ),
         monthly_spend=_monthly_spend(db, month.year),
         spend_by_category=_spend_by_category(db, this_claims),
-        spend_by_department=[],
+        spend_by_department=_spend_by_department(db, this_claims),
         recent_events=_recent_events(db),
     )
 
@@ -116,18 +122,20 @@ def _add_months(month: date, delta: int) -> date:
 
 
 def _bounds(month: date) -> tuple[datetime, datetime]:
-    """[start, end) of an IST calendar month, in UTC."""
-    start = datetime(month.year, month.month, 1, tzinfo=IST)
+    """[start, end) of a business-time-zone calendar month, in UTC."""
+    tz = payouts.business_tz()
+    start = datetime(month.year, month.month, 1, tzinfo=tz)
     end_month = _add_months(month, 1)
-    end = datetime(end_month.year, end_month.month, 1, tzinfo=IST)
+    end = datetime(end_month.year, end_month.month, 1, tzinfo=tz)
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
-def _ist_month(moment: datetime) -> date:
-    """IST month of a stored timestamp (SQLite returns naive values, stored as UTC)."""
+def _local_month(moment: datetime) -> date:
+    """Business-time-zone month of a stored timestamp (SQLite returns naive values,
+    stored as UTC)."""
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
-    return moment.astimezone(IST).date().replace(day=1)
+    return moment.astimezone(payouts.business_tz()).date().replace(day=1)
 
 
 def _money(value: Decimal | int | None) -> Decimal:
@@ -195,21 +203,18 @@ def _violations(db: Session, this_claims: list[int], previous_claims: list[int])
 
 def _approval_time(db: Session, month: date, previous: date) -> ApprovalTimeKpi:
     rows = db.execute(
-        select(Claim.submitted_at, func.max(ApprovalStep.acted_at))
-        .join(ApprovalStep, ApprovalStep.claim_id == Claim.id)
-        .where(
-            Claim.status == ClaimStatus.APPROVED.value,
-            ApprovalStep.round == Claim.submission_round,
-            ApprovalStep.status == StepStatus.APPROVED.value,
+        select(Claim.submitted_at, Claim.approved_at).where(
+            Claim.status.in_(APPROVED_BY_PEOPLE),
+            Claim.approved_at.is_not(None),
+            Claim.policy_outcome != PolicyOutcome.AUTO_APPROVE.value,
         )
-        .group_by(Claim.id, Claim.submitted_at)
     ).all()
 
     hours: dict[date, list[float]] = defaultdict(list)
     for submitted_at, approved_at in rows:
         if submitted_at is None or approved_at is None:
             continue
-        hours[_ist_month(approved_at)].append((approved_at - submitted_at).total_seconds() / 3600)
+        hours[_local_month(approved_at)].append((approved_at - submitted_at).total_seconds() / 3600)
 
     def average(values: list[float]) -> float | None:
         return round(sum(values) / len(values), 1) if values else None
@@ -222,10 +227,23 @@ def _approval_time(db: Session, month: date, previous: date) -> ApprovalTimeKpi:
 
 
 def _ready_for_payout(db: Session) -> PayoutKpi:
-    count, amount = db.execute(
-        select(func.count(), func.sum(Claim.total_amount)).where(Claim.status.in_(PAYABLE))
-    ).one()
-    return PayoutKpi(claims=count or 0, amount=_money(amount))
+    """Same eligibility as a payout batch (``app.services.payouts``), without the date range."""
+    candidates = db.scalars(
+        select(Claim).where(
+            Claim.status.in_([status.value for status in PAYABLE_STATUSES]),
+            Claim.approved_at.is_not(None),
+            Claim.payout_batch_id.is_(None),
+            Claim.paid_at.is_(None),
+        )
+    )
+    ready = [
+        claim
+        for claim in candidates
+        if not payouts.held_for_sample_audit(claim) and payouts._fully_approved(db, claim)
+    ]
+    return PayoutKpi(
+        claims=len(ready), amount=_money(sum((c.total_amount for c in ready), Decimal(0)))
+    )
 
 
 # --- needs action ------------------------------------------------------------
@@ -277,7 +295,7 @@ def _monthly_spend(db: Session, year: int) -> list[MonthSpend]:
             Claim.status.not_in(NOT_COUNTED_VALUES),
         )
     ):
-        totals[_ist_month(submitted_at)].append(Decimal(amount))
+        totals[_local_month(submitted_at)].append(Decimal(amount))
 
     months = [date(year, number, 1) for number in range(1, 13)]
     return [
@@ -300,6 +318,24 @@ def _spend_by_category(db: Session, claim_ids: list[int]) -> list[CategorySpend]
     ).all()
     spend = [CategorySpend(category=category, amount=_money(total)) for category, total in rows]
     return sorted(spend, key=lambda item: (-item.amount, item.category))
+
+
+def _spend_by_department(db: Session, claim_ids: list[int]) -> list[DepartmentSpend]:
+    if not claim_ids:
+        return []
+    rows = db.execute(
+        select(User.department, func.sum(Claim.total_amount))
+        .join(User, User.id == Claim.employee_id)
+        .where(Claim.id.in_(claim_ids))
+        .group_by(User.department)
+    ).all()
+    totals: dict[str, Decimal] = defaultdict(Decimal)
+    for department, total in rows:
+        totals[department or UNASSIGNED] += Decimal(total or 0)
+    spend = [
+        DepartmentSpend(department=name, amount=_money(total)) for name, total in totals.items()
+    ]
+    return sorted(spend, key=lambda item: (-item.amount, item.department))
 
 
 def _recent_events(db: Session) -> list[FinanceEvent]:

@@ -27,16 +27,20 @@ class ViolationsKpi(BaseModel):
 
 class ApprovalTimeKpi(BaseModel):
     average_hours: float | None = Field(
-        description="Submit -> final approval, averaged over claims fully approved this month "
-        "(by a person; auto-approved claims excluded). Null when there were none."
+        description="Submit -> final approval (approved_at), averaged over claims approved by "
+        "people this month, including those since paid; auto-approved claims excluded. Null "
+        "when there were none."
     )
     previous_average_hours: float | None
     approved_claims: int = Field(description="Claims the average is over.")
 
 
 class PayoutKpi(BaseModel):
-    claims: int = Field(description="APPROVED + AUTO_APPROVED claims (all months).")
-    amount: Decimal = Field(description="Their total, INR. Payout batches do not exist yet.")
+    claims: int = Field(
+        description="Claims a payout batch could pay now: approved or auto-approved, fully "
+        "approved, not in a batch, not paid, not held for sample audit (any approval date)."
+    )
+    amount: Decimal = Field(description="Their total, INR.")
 
 
 class Kpis(BaseModel):
@@ -91,13 +95,16 @@ class FinanceEvent(BaseModel):
     created_at: datetime
     actor_id: int
     actor_name: str
-    action: str = Field(description="Audit action, e.g. APPROVED, REJECTED, POLICY_RULE_UPDATED.")
+    action: str = Field(
+        description="Audit action: APPROVED, REJECTED, SENT_BACK, STEP_APPROVED, "
+        "POLICY_RULE_UPDATED, BATCH_CREATED or BATCH_EXPORTED."
+    )
     entity_type: str
     entity_id: int
 
 
 class DashboardSummary(BaseModel):
-    month: str = Field(description="The month summarised, YYYY-MM (India time).")
+    month: str = Field(description="The month summarised, YYYY-MM (business time zone).")
     generated_at: datetime
     active_employees: int = Field(description="Active users with the employee role.")
     kpis: Kpis
@@ -105,6 +112,7 @@ class DashboardSummary(BaseModel):
     monthly_spend: list[MonthSpend] = Field(description="January to December of the month's year.")
     spend_by_category: list[CategorySpend] = Field(description="This month, largest first.")
     spend_by_department: list[DepartmentSpend] = Field(
-        description="Always empty for now: users have no department yet."
+        description="This month by the claimant's department, largest first; users without "
+        "a department are grouped as 'Unassigned'."
     )
     recent_events: list[FinanceEvent] = Field(description="Latest 10 finance events, newest first.")

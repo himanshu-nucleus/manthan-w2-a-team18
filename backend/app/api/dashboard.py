@@ -30,15 +30,15 @@ def get_dashboard_summary(
     month: str | None = Query(
         default=None,
         pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
-        description="YYYY-MM (India time); defaults to the current month.",
+        description="YYYY-MM in the business time zone; defaults to the current month.",
     ),
     db: Session = Depends(get_db),
     user: User = Depends(finance_only),
 ) -> DashboardSummary:
     """Spend, claim counts and violations cover counted claims (not draft, rejected,
     auto-rejected or duplicate) submitted in the month. Each KPI carries the previous
-    month for the "vs last month" figure. `ready_for_payout` is every approved or
-    auto-approved claim, since payout batches do not exist yet. `spend_by_department` is
-    always empty until users have a department."""
+    month for the "vs last month" figure. `ready_for_payout` uses the payout batch rules
+    (approved, not yet in a batch or paid). `spend_by_department` groups by the claimant's
+    department."""
     selected = date(int(month[:4]), int(month[5:7]), 1) if month else dashboard.current_month()
     return dashboard.summary(db, user, selected)

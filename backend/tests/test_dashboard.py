@@ -18,6 +18,7 @@ from tests.helpers import API, add_user, line, login, submit_claim
 MONTH = "2026-11"
 MID_NOVEMBER = datetime(2026, 11, 10, 6, 0, tzinfo=UTC)
 MID_OCTOBER = datetime(2026, 10, 10, 6, 0, tzinfo=UTC)
+APPROVED_STATES = {ClaimStatus.APPROVED, ClaimStatus.AUTO_APPROVED, ClaimStatus.PAID}
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +66,8 @@ def add_raw_claim(
         status=status.value,
         total_amount=Decimal(total),
         submitted_at=submitted_at,
+        approved_at=submitted_at if status in APPROVED_STATES else None,
+        paid_at=submitted_at if status == ClaimStatus.PAID else None,
         created_by=owner.id,
         updated_by=owner.id,
     )
@@ -166,16 +169,25 @@ def test_policy_violations_count_breached_lines_out_of_all_lines(
     assert violations == {"lines": 1, "total_lines": 4, "rate_percent": 25.0, "previous_lines": 0}
 
 
-def test_ready_for_payout_sums_approved_and_auto_approved_claims_of_any_month(
+def test_ready_for_payout_counts_what_a_payout_batch_could_pay_now(
     client: TestClient, db_session: Session, org: dict[str, User]
 ) -> None:
     add_raw_claim(db_session, org["emp"], "400", ClaimStatus.AUTO_APPROVED, MID_OCTOBER)
+    approved = submit(client, "emp2", [line("meal", "1600", receipt=True)])
+    response = client.post(
+        f"{API}/claims/{approved['id']}/approve",
+        json={"step_id": None},
+        headers=login(client, "manager"),
+    )
+    assert response.json()["status"] == "APPROVED", response.text
+    add_raw_claim(db_session, org["emp"], "7000", ClaimStatus.PAID, MID_NOVEMBER)
+    # APPROVED with no approved chain behind it is not payable.
     add_raw_claim(db_session, org["emp"], "30000", ClaimStatus.APPROVED, MID_NOVEMBER)
     add_raw_claim(db_session, org["emp"], "9000", ClaimStatus.PENDING_APPROVAL, MID_NOVEMBER)
 
     payout = summary(client).json()["kpis"]["ready_for_payout"]
 
-    assert payout == {"claims": 2, "amount": "30400.00"}
+    assert payout == {"claims": 2, "amount": "2000.00"}
 
 
 def test_average_approval_time_runs_from_submit_to_the_final_approval(
@@ -278,7 +290,25 @@ def test_spend_by_category_is_this_months_lines_largest_first(
         {"category": "other", "amount": "550.00"},
         {"category": "cab", "amount": "450.00"},
     ]
-    assert body["spend_by_department"] == []
+
+
+def test_spend_by_department_groups_by_the_claimants_department(
+    client: TestClient, db_session: Session, org: dict[str, User]
+) -> None:
+    org["emp"].department = "Sales"
+    org["manager"].department = "Sales"
+    db_session.flush()
+    add_raw_claim(db_session, org["emp"], "400", ClaimStatus.AUTO_APPROVED, MID_NOVEMBER)
+    add_raw_claim(db_session, org["manager"], "450", ClaimStatus.AUTO_APPROVED, MID_NOVEMBER)
+    add_raw_claim(db_session, org["emp2"], "300", ClaimStatus.AUTO_APPROVED, MID_NOVEMBER)
+    add_raw_claim(db_session, org["emp2"], "999", ClaimStatus.AUTO_APPROVED, MID_OCTOBER)
+
+    departments = summary(client).json()["spend_by_department"]
+
+    assert departments == [
+        {"department": "Sales", "amount": "850.00"},
+        {"department": "Unassigned", "amount": "300.00"},
+    ]
 
 
 def test_recent_events_list_finance_actions_newest_first_with_the_actor(
