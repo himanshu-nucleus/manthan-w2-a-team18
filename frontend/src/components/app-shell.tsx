@@ -1,5 +1,6 @@
 import {
   BankIcon,
+  ClockCounterClockwiseIcon,
   CalendarXIcon,
   ChartBarIcon,
   ListChecksIcon,
@@ -28,6 +29,7 @@ interface NavItem {
     | '/admin/people'
     | '/payouts'
     | '/insights'
+    | '/audit-trail'
   label: string
   icon: Icon
 }
@@ -46,8 +48,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     OUT_OF_OFFICE,
   ],
   finance_auditor: [
+    { to: '/insights', label: 'Dashboard', icon: ChartBarIcon },
     { to: '/approvals', label: 'Audit queue', icon: ShieldCheckIcon },
     { to: '/payouts', label: 'Payout batches', icon: BankIcon },
+    { to: '/audit-trail', label: 'Audit trail', icon: ClockCounterClockwiseIcon },
     MY_CLAIMS,
     NEW_CLAIM,
     OUT_OF_OFFICE,
@@ -59,6 +63,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/claims', label: 'All claims', icon: ReceiptIcon },
     { to: '/admin/policy-rules', label: 'Policy rules', icon: ScalesIcon },
     { to: '/admin/people', label: 'People', icon: UsersThreeIcon },
+    { to: '/audit-trail', label: 'Audit trail', icon: ClockCounterClockwiseIcon },
     OUT_OF_OFFICE,
   ],
 }

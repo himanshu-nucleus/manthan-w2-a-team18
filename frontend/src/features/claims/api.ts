@@ -142,10 +142,17 @@ export type PolicyResults = z.infer<typeof policyResultsSchema>
 export const auditEventSchema = z.object({
   id: z.number(),
   entity_type: z.string(),
-  entity_id: z.number(),
+  entity_id: z.number().nullable(),
+  claim_id: z.number().nullable().optional(),
   action: z.string(),
   changes: z.record(z.string(), z.unknown()),
-  actor_id: z.number(),
+  actor_id: z.number().nullable(),
+  actor_role: z.string().nullable().optional(),
+  on_behalf_of_id: z.number().nullable().optional(),
+  comment: z.string().nullable().optional(),
+  ip_address: z.string().nullable().optional(),
+  request_id: z.string().nullable().optional(),
+  hash: z.string().nullable().optional(),
   created_at: dateTime,
 })
 export type AuditEvent = z.infer<typeof auditEventSchema>
