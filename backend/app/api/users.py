@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import PermissionDenied, get_current_user, require_role
 from app.database import get_db
 from app.errors import AppError
-from app.models import Role, User
+from app.models import AuditAction, Role, User
 from app.schemas.errors import error_responses
 from app.schemas.user import UserCreate, UserOut
 from app.security import hash_password
+from app.services import access, audit
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -48,7 +49,7 @@ class UserNotFound(AppError):
 def create_user(
     body: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(finance_head_only),
+    head: User = Depends(finance_head_only),
 ) -> User:
     """`role` must be `employee`, `line_manager` or `finance_auditor` - never `finance_head`.
     `manager_id` (optional) must be an active user. Username and email must be unique."""
@@ -76,6 +77,19 @@ def create_user(
     )
     db.add(user)
     try:
+        db.flush()
+        # Never the password or its hash.
+        audit.record(
+            db,
+            entity_type="user",
+            entity_id=user.id,
+            action=AuditAction.USER_CREATED,
+            actor=head,
+            changes={
+                field: {"old": None, "new": getattr(user, field)}
+                for field in ("username", "full_name", "email", "role", "manager_id")
+            },
+        )
         db.commit()
     except IntegrityError as exc:
         # Lost a race with a concurrent insert of the same username/email.
@@ -111,6 +125,13 @@ def get_user(
 ) -> User:
     """Non-heads get 403 for any id but their own, whether or not it exists: no probing."""
     if current_user.role != Role.FINANCE_HEAD and user_id != current_user.id:
+        access.deny(
+            db,
+            current_user,
+            reason="may only view own user record",
+            entity_type="user",
+            entity_id=user_id,
+        )
         raise PermissionDenied("You may only view your own user record.")
     user = db.get(User, user_id)
     if user is None:

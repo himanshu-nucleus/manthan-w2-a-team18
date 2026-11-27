@@ -330,7 +330,7 @@ def test_recent_events_list_finance_actions_newest_first_with_the_actor(
     events = summary(client).json()["recent_events"]
 
     actions = [(event["action"], event["actor_name"]) for event in events]
-    assert actions[0] == ("POLICY_RULE_UPDATED", "Head")
+    assert actions[0] == ("RULE_UPDATED", "Head")
     assert ("APPROVED", "Manager") in actions
     assert all(event["action"] not in {"CREATED", "SUBMITTED"} for event in events)
 

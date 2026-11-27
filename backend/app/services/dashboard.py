@@ -66,8 +66,11 @@ FINANCE_EVENT_ACTIONS = (
     AuditAction.REJECTED,
     AuditAction.SENT_BACK,
     AuditAction.STEP_APPROVED,
-    AuditAction.POLICY_RULE_UPDATED,
+    AuditAction.RULE_UPDATED,
     AuditAction.BATCH_CREATED,
+    AuditAction.CSV_EXPORTED,
+    # Names used before migration 0006, so older rows still show.
+    AuditAction.POLICY_RULE_UPDATED,
     AuditAction.BATCH_EXPORTED,
 )
 RECENT_EVENTS = 10

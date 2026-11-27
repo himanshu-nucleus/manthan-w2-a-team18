@@ -34,7 +34,7 @@ All in one database transaction; any failure undoes everything:
 1. Batch creation is serialised (PostgreSQL advisory lock) and the eligible claims are locked (`SELECT â€¦ FOR UPDATE`).
 2. A `payout_batches` row: `PB-<IST date>-<NNN>`, numbering restarting at 001 each day.
 3. One `payout_batch_items` row per claim, with `transaction_reference` `<batch>-0001`, `-0002`, â€¦ and a copy of every value printed in the file.
-4. Each claim: status `PAID`, `paid_at`, `payout_batch_id`; audit event `PAID`.
+4. Each claim: status `PAID`, `paid_at`, `payout_batch_id`; audit event `MARKED_PAID` (`PAID` before migration 0006).
 5. Audit event `BATCH_CREATED` on the batch.
 
 No eligible claims â†’ `422 no_eligible_claims` and no batch. The database refuses a second payment of the same claim (`UNIQUE(payout_batch_items.claim_id)`).
@@ -45,7 +45,7 @@ No eligible claims â†’ `422 no_eligible_claims` and no batch. The database 
 - Header, one row per claim in approval-date order, then `TRAILER,<claimCount>,<totalAmount>`.
 - `ValueDate` is the batch's creation date (IST) as `dd-mm-yyyy`; `EmployeeId` is `EMP` + 4-digit user id; `ClaimId` is `CLM-` + 6-digit claim id; `Amount` has 2 decimals, no separators.
 - Any value starting with `=`, `+`, `-`, `@`, tab or carriage return is prefixed with `'` (formula injection).
-- Built only from the saved batch and items, so every download is byte-identical. Each download writes a `BATCH_EXPORTED` audit event, increments `export_count` and sets the batch to `EXPORTED`.
+- Built only from the saved batch and items, so every download is byte-identical. Each download writes a `CSV_EXPORTED` audit event (`BATCH_EXPORTED` before migration 0006), increments `export_count` and sets the batch to `EXPORTED`.
 
 ```
 BatchReference,TransactionReference,ValueDate,EmployeeId,BeneficiaryName,Department,ClaimId,Amount,Currency,Narration
